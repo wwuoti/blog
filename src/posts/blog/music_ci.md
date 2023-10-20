@@ -83,6 +83,7 @@ Just one problem, you're likely going to need more than just your daw.
 ## The road to dependency hell is paved with good intentions
 
 ## Just do it locally
+
 *How often do you need new revisions anyway?*
 
 
