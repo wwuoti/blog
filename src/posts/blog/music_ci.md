@@ -2,7 +2,7 @@
 title: "Hammering Music production with DevOps"
 category: "Music"
 date: "2023-10-19 20:25"
-desc: "When everything starts looking like a nail looking for a DevOps hammer, you've got a problem."
+desc: "When everything looks like a nail searching for a DevOps hammer"
 thumbnail: "./images/default.jpg"
 #alt: "code block graphic"
 ---
@@ -12,7 +12,7 @@ thumbnail: "./images/default.jpg"
 You've worked on CI for the past few years. Some YAML here and there, you've spent more time than you'd optimally like fighting pipelines.
 You're eager to use your newly acquired skills for something flashy.
 
-Music production on Digital Audio Workstations (DAWs) is a tedious, iterative process, where you often need to listen to your creations as you work on your tracks. Like in all creative professions, you do some drafts and keep polishing your work until sufficient quality is achieved.
+Music production on Digital Audio Workstations (DAWs) is a tedious, iterative process, where you occasionally want to preview your latest creations. Like in all creative professions, you do some drafts and keep polishing your work until sufficient quality is achieved.
 
 There's many listening environments, and to listen to a fresh draft of your next hit, you need to:
 
@@ -20,11 +20,15 @@ There's many listening environments, and to listen to a fresh draft of your next
 - **Render it to a file**
 - **Copy it to some storage medium**
 
-Now the gears start turning in your head, you've got a great new vision.
+The problem here is the amount of time it takes for the project to render, after which you need to transfer the file to your phone.
+
+But what about if you don't want to listen to the track on your phone? Maybe some other device? Or someone else?
 
 ## The Nail
 
-Fortunately, Reaper stores its project files in plain text:
+So you want to build automatic pipelines for your music projects?
+
+A lot of details depend on your DAW of choice, but on Reaper the start is easy: its project files are in plain text format:
 
 ```reaper
 <REAPER_PROJECT 0.1 "6.66/linux-x86_64" 1662197272
@@ -61,34 +65,62 @@ This has the sided effect of compressing really well, in addition to suiting a g
 
 So now you have a repository full of project files, the next step is to set up some pipelines.
 
-Reaper also has extensive APIs, but realistically we only need some command line options to render the project.
-
 This of course becomes increasingly useful when you're working on 
-
-Something about distributed nature of vsts
-
-Licensing, another major problem
 
 ## The Hammer
 
 All CI services provide some ready-made runners, but in this case you need to roll your own. There are several options, but the most ***DevOps*** way is to run it in containers, right?
 
 Luckily again, Reaper is both
-- Portable ([12MB for a program this size is rare to see](https://www.reaper.fm/download.php))
-- Runs headless (the custom GUI framework has a headless mode)
-- Some nice command line options
+- Portable ([12MB for a program this importance is rare to see](https://www.reaper.fm/download.php))
+- Runs headless
+- Provides command line options for rendering (`-renderproject`)
 
 Just one problem, you're likely going to need more than just your daw.
 
 ## The road to dependency hell is paved with good intentions
 
+Somehow, somewhere music production evolved to use common standards instead of relying on out-of-the-box functionality.
+
+Think of a common standard of using image processing filters accross Gimp, Photoshop and others.
+
+Nowadays, musicians workflows rely as much on 3rd-party plugins as stock plugins.
+
+
+This is where the problem appears for our builds. In addition to the base program (DAW) you're using, you'd also need to bundle all plugins with the main program.
+
+Sure, you can copy all the 
+
+### A dedicated VPS for buidls?
+
+Just as you'd use a container, you could just rent a server somewhere, install your DAW, plugins, and a CI agent there?
+
+There's just one problem. How do you  this?
+
+The main benefit of doing offline builds is that you don't need the processing power, you can deal just fine with a slower server.
+
+It's really difficult to cope with all the possible licensing features of the different plugins.
+
 ## Just do it locally
 
+If you need to keep your plugin collection up-to-date, the best way to
+
+Okay, so how to accomplish this on your local machine then? The rendering process still takes.
+
+You're still facing a rather similar issue: for security reasons, you'd need to separate the build account from your personal account.
+And here the chain of verification breaks again: you cannot test that all the plugins work with the new build account.
+
+But how often you need the new revisions anyway? What if:
+- crate new renders every once in a while
+- run a CI job which collects new samples
+- Build static site out of that
+
+With this, you'd get:
+- reasonably up-to-date builds
+- No extra plugin maintenance
+
+The only thing you'll lose is the quick feedback, but at least you have proper-sounding builds.
+
+Lastly, I need something to populate my git commits. To be realistic, I'm never going to look at any commit messages, all I'm interested in that which files were changed.
 *How often do you need new revisions anyway?*
 
-
-Static site generator
-
-
-
-Show VLC playlist generator JS
