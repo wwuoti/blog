@@ -38,7 +38,7 @@ TODO: VLC broke screenshot
 But hold on for a moment. Why not just programmatically create the playlist, and put a button on the site to download it?
 
 One common format for playlists is `m3u` format, which is relatively simple.
-The file starts with ` `
+The file starts with `#EXTM3U`
 
 To create the download button, we use this (rather ugly) Javascript snippet:
 
