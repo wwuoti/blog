@@ -9,7 +9,17 @@ thumbnail: "./images/default.jpg"
 
 ## Background
 
-Music production on Digital Audio Workstations (DAWs) is a tedious, iterative process, where you occasionally want to preview your latest creations. Like in all creative professions, you do some drafts and keep polishing your work until sufficient quality is achieved.
+Music production  is a tedious, iterative process. Like in all creative professions, you do some drafts and keep polishing your work until sufficient quality is achieved.
+
+Nowadays most of music production happens on Digital Audio Workstations (DAWs). With the small exception of DAWless hobbyists, music where you can play back and tweak your tracks to your hearts content. 
+
+However, you occasionally want to preview your latest creations somewhere else than in front of your computer.
+
+In fact, the main goal of audio engineering is to make your track sound as good as possible. And to get it working on every possible listening environment.
+
+For instance, The Car Test is a well-known benchmark of how well your music is produced. Even after tapes were long forgotten, music producers still scrambled to burn their tracks to CDs or copying
+
+Speaking of bouncing, what's the process behind this?
 
 There's many listening environments, and to listen to a fresh draft of your next hit, you need to:
 
