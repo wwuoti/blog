@@ -120,20 +120,21 @@ Even though just a fraction of all plugins are available on Linux, I still have 
 
 ![REAPER screenshot asking user if they want to add 1765 plugin instances](/.attachments/reaper_all_fx.png "No, I don't think I wan to add all these to a single track")
 
-### A dedicated machine for builds?
+### Getting things built
 
-Just as you'd use a container, you could just rent a server somewhere, install your DAW, plugins, and a CI agent there?
+Now all we need is a machine to do our builds. Packaging and installing all plugins to a CI-provided agent, or god forbid inside a container sounds like pure madness.
 
-I went though this. You can migrate your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
+A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI agent there. Sounds simple enough, right?
+
+I went though this. You can copy your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
 
 Just one thing: **licensing**. Most of (good) plugins require licenses of some sort. For instance, the [u-he](https://u-he.com/) plugins expect license files to be found on your home directory.
 
 You could just copy the license files to the server in the same manner as you are copying your plugins, right?
 
-I went through this. And what a pain it was.
+I did this as well. And what a pain it was.
 
 Most of the time GitLab agent runs as a different user for security reasons. With this, the home directory for the licenses is different than the user that you're configuring the server as.
-
 
 For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the tracks. This is a common method for plugins to indicate they're being run caused by the  in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
 
