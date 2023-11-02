@@ -257,7 +257,15 @@ render:
 
 The "bounce" step here really only publishes the MP3 files from the shared directory. After that, they can be used by the `build` stage.
 
-In index.js, you can display all of the files from Gatsby data with the following:
+The `build` stage is where the static site containing the songs is built. Here I'm using Gatsby, which has good documentation TODO: gitlab docs here.
+
+
+The only interesting part here is embeddkng th MP3 files to the page:
+
+TODO: show how to list files
+
+
+Next, in Index.js, you can display all of the files from Gatsby data with the following:
 
 ```js
 {data.allFile.edges.map((file, index) => {
@@ -278,6 +286,6 @@ In index.js, you can display all of the files from Gatsby data with the followin
 })}
 ```
 
-Getting the songs hosted is done by a static site generator, Gatsby. The site is hosted using Gitlab's static site hosting.
+Getti
 
 
