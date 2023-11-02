@@ -9,10 +9,9 @@ thumbnail: "./images/default.jpg"
 
 <!-- markdownlint-disable line-length -->
 
-<i>When releasing new music, I've had the habit of notifying a friend of mine just after a my new single hit Spotify. This continued for a while, and my friend joked about having exclusive access to my music pipelines, which I always found funny.
+<i>When releasing new music, I've had the habit of notifying a friend of mine just after a new song hit Spotify. This continued for a while, and my friend joked about having exclusive access to my music pipelines, which I always found funny. </i>
 
-*But hold on for a second. Pipelines for music? As in CI ([Continuous Integration](https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment))? Could that work?*
-</i>
+But hold on for a second. Pipelines for music? As in CI ([Continuous Integration](https://www.atlassian.com/continuous-delivery/principles/continuous-integration-vs-delivery-vs-deployment)) pipelines? Could that work?
 
 ## Background
 
@@ -34,19 +33,25 @@ Speaking of bouncing or rendering, what's the process behind this?
 
 The problem here is the amount of time it takes for the project to render. With larger projects, ~5 minutes per project is really common.
 
+-->
 
---> 
-If you want to render multiple projects at once, you're talking of ~30mins being wasted not actually producing anything.
+As with video editing, to get a finished product, you'll have to **render** it. In short, during the rendering the DAW goes through all the bits and pieces in your track and comes up with a nice audio file, which you can then listen to, send forward etc.
 
-Also, what about if you want to share the track with someone else? What if you make multiple revisions?
+However, the rendering process takes a while. Here's a short example: on my 16-core AMD 1700x machine, a song with ~120 tracks is rendered in roughly 2 time faster than playing it back in real time. So for a four minute song you'll have to sit around and wait two minutes.
 
-So yeah, *pipelines for music* does make sense. At least a little bit.
+![reaper_render_progress](/.attachments/reaper_render_progress.png)
+
+But what if you want to render multiple projects at once, for instance an EP (~5 songs) or a full album (~10 songs)? Now you're talking of ~15 minutes being wasted.
+
+Also, what if need to make a small edit and do a new revision? Do it all manually? **Every single time something changed?**. I think that's the unfortunate reality for many music producers.
+
+With that in mind, **CI pipelines for music** does make sense.
 
 ## The Nail
 
-So how do you get started? Well, it depends **a lot** on your DAW of choice. For the purposes of this blog we are only focusing on [REAPER](https://www.reaper.fm/).
+So how do you get started? Well, it depends *a lot* on your DAW of choice. For the purposes of this blog we are only focusing on [REAPER](https://www.reaper.fm/).
 
-In the context of CI pipelines (and git), you'll either need:
+In the context of CI pipelines (and Git), you'll either need:
 
 - Small project files
 - Lots of Git LFS storage
@@ -84,7 +89,7 @@ Luckily REAPER keeps its project files in plain text format:
   >
 ```
 
-This has the sided effect of compressing really well, in addition to suiting a git-oriented workflow. I'm not (link) the only one by the way. See more [here](https://vi-control.net/community/threads/using-git-for-daw-project-files.70709/) and [here](https://forum.cockos.com/showthread.php?t=102268).
+This has the sided effect of compressing really well, in addition to suiting a Git-oriented workflow. I'm not (link) the only one by the way. See more [here](https://vi-control.net/community/threads/using-git-for-daw-project-files.70709/) and [here](https://forum.cockos.com/showthread.php?t=102268).
 
 So now you have a repository full of project files, the next step is to set up some pipelines.
 
@@ -93,18 +98,21 @@ So now you have a repository full of project files, the next step is to set up s
 All CI services provide some ready-made runners, but in this case you need to roll your own.
 
 Luckily again, REAPER is both
+
 - Portable ([12MB for a full DAW is rare to see](https://www.reaper.fm/download.php))
-- Runs headless
+- Can be run without a graphical interface
 - Provides command line options for rendering (`-renderproject`)
 
-Just one problem, you're likely going to need more than just your DAW.
+Just one problem though, your CI runner is likely going to need more than just your DAW.
 
-## The road to dependency hell is paved with good intentions
+### The road to dependency hell is paved with good intentions
 
 Somehow, somewhere music production software evolved to use common standards instead of relying on out-of-the-box functionality.
-Think of a common standard of using image processing filters accross Gimp, Photoshop and others.
+Think of a common standard of using image processing filters across Gimp, Photoshop and others.
 
 Most people refer to these simply as plugins. They come in various formats (VST, AU, CLAP) but they all introduce the same problem to our CI. Dependencies. And a lot of them.
+
+And not just any dependencies. There's no centralized **store** for these. Most of them come as ready-built binaries in archives, which you're supposed to extract manually to your plugin directory. Well, some plugins might come with an `install.sh` script, but there's no guarantee.
 
 This is where the problem appears for our builds. In addition to the base program (DAW) you're using, you'd also need to bundle all plugins with the main program.
 
@@ -112,39 +120,37 @@ Even though just a fraction of all plugins are available on Linux, I still have 
 
 ![REAPER screenshot asking user if they want to add 1765 plugin instances](/.attachments/reaper_all_fx.png "No, I don't think I wan to add all these to a single track")
 
-
-### A dedicated machine for buidls?
+### A dedicated machine for builds?
 
 Just as you'd use a container, you could just rent a server somewhere, install your DAW, plugins, and a CI agent there?
 
 I went though this. You can migrate your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
 
-Just one thing: licensing. Most VSTs require licenses of some sort. Luckily, you could copy 
+Just one thing: **licensing**. Most of (good) plugins require licenses of some sort. For instance, the [u-he](https://u-he.com/) plugins expect license files to be found on your home directory.
 
-TODO: gitlab agent being run as a differnet user
+You could just copy the license files to the server in the same manner as you are copying your plugins, right?
 
-Most of the time Gitlab agent runs as a different user for security reasons. With this, 
+I went through this. And what a pain it was.
+
+Most of the time GitLab agent runs as a different user for security reasons. With this, the home directory for the licenses is different than the user that you're configuring the server as.
+
+
+For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the tracks. This is a common method for plugins to indicate they're being run caused by the  in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
 
 All in all, what happens if some plugin just happens to go to a degraded state? How will you debug this?
+ Are you going to install a remote desktop service to the machine? Start your DAW on the remote desktop connection and try opening the project there?
 
-Here's an MP3 file from a pipeline run where some of the plugins were not initialized yet.
+ What about if the server does not have the power to run your DAW in real time? Since rendering happens offline, it would make sense to get a relatively cheap server, it's not like your music pipelines need to be that fast. On the other hand, this doesn't even take in the account that the VM might not have a sound card available.
 
-TODO: mp3 embed here
+But wait, there's more problems. In addition to the missing licenses, the songs rendered **sounded** completely different. It's like there were some effects missing. So not only are paid plugins a problem, you also have to deal with individual plugins not loading on the server due to incompatible libraries, for instance.
 
-You hear a very audible cracking sound caused by the plugins being in demo mode. Even though the licenses are present in 
+With a lot of time wasted, there has to be a better option.
 
-All in all, it's not just the demo mode being active. Compare it to a render done on my own machine:
+## Just render locally
 
-TODO: MP3 embed here
+If you want to get your tracks rendered **exactly** the way you would get them on your local machine, the best way is to **render them on your local machine.**
 
-## Just do it locally
-
-If you need to keep your plugin collection up-to-date, the best way is to render your 
-
-Okay, so how to accomplish this on your local machine then? The rendering process still takes ~30 min and all of your CPU.
-
-You're still facing a rather similar issue: for security reasons, you'd need to separate the build account from your personal account.
-And here the chain of verification breaks again: you cannot test that all the plugins work with the new build account.
+Okay, so how to accomplish then? The rendering process still takes ~15 min and all of your CPU. If you try to schedule this, you're going to be very surprised (or annoyed) by your CPU usage going to 100% at some point.
 
 But how often you need the new revisions anyway? What if:
 - crate new renders every once in a while
@@ -226,6 +232,51 @@ Now, you can run
 ```shell
 $ ./render_script.sh && ./push_updates.sh`
 ```
-which renders all projects, push your latest changes and triggers the CI job.
 
-There's still more content to be explored here (how do you set up that static site anyway), but that's a story for another time.
+which renders all projects and pushes your latest changes and triggers the CI job.
+
+Next, you'll need to setup CI (`.gitlab-ci.yaml`):
+
+```yaml
+stages:
+    - bounce
+    - build
+include:
+    local: '.gatsby-build.yml'
+render:
+    stage: bounce
+    tags:
+        - reaper
+    script: cp /<SHARED_RUNNER_DIRECTORY>/*.mp3 ./
+    artifacts:
+        paths:
+            - ./*.mp3
+
+```
+
+The "bounce" step here really only publishes the MP3 files from the shared directory. After that, they can be used by the `build` stage.
+
+In index.js, you can display all of the files from Gatsby data with the following:
+
+```js
+{data.allFile.edges.map((file, index) => {
+  return (
+    <li key={`mp3-${index}`}>
+      <p>
+        {file.node.name}
+      </p>
+      <p>
+        <audio controls>
+          <source src={file.node.publicURL} type="audio/mp3" />
+        </audio>
+      </p>
+      <a href={file.node.publicURL} download> download
+      </a>
+    </li>
+  )
+})}
+```
+
+Getting the songs hosted is done by a static site generator, Gatsby. The site is hosted using Gitlab's static site hosting.
+
+
