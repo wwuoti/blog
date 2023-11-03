@@ -102,13 +102,13 @@ Even though just a fraction of all plugins are available on Linux, I still have 
 
 ![REAPER screenshot asking user if they want to add 1765 plugin instances](images/reaper_all_fx.png "No, I don't think I want to add all these effects to a single track")
 
-### A bit of local pipeline replacement
+### Piping up your own CI runner
 
 Now all we need is a machine to do our builds. Packaging and installing all plugins to a CI-provided runner, or god forbid inside a container sounds like pure madness.
 
 #### The (almost) good part
 
-A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI runner there. Sounds simple enough, right?
+A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI runner agent there. This way you'd have your custom server hooked up to the CI service, ready to run builds. Sounds simple enough, right?
 
 I went through this. You can copy your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
 
@@ -122,7 +122,7 @@ I did this as well. And what a pain it was.
 
 Most of the time GitLab CI agent runs as a different user for security reasons. With this, the home directory for the licenses is different than the user that you're configuring the server as.
 
-For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the songs. This is a common method for plugins to indicate they're being run caused by the  in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
+For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the songs. This is a common method for plugins to indicate they're being run in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
 
 All in all, what happens if some plugin just happens to go to a degraded state? How will you debug this?
  Are you going to install a remote desktop service to the machine? Start your DAW on the remote desktop connection and try opening the project there?
@@ -135,7 +135,7 @@ But wait, there's more problems. In addition to the missing licenses, the songs 
 
 With a lot of time wasted, there has to be a better option.
 
-## Just do it locally
+## A bit of local pipeline replacement
 
 If you want to get your songs rendered **exactly** the way you would get them on your local machine, the best way is to render them on the **same machine** as you produce your music on.
 
