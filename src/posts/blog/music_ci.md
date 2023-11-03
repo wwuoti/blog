@@ -1,8 +1,8 @@
 ---
-title: "Hammering Music production with DevOps"
+title: "Pipelines for music production"
 category: "Music"
 date: "2023-10-19 20:25"
-desc: "When everything looks like a nail searching for a DevOps hammer"
+desc: "Plumbing your song drafts forward"
 thumbnail: "./images/default.jpg"
 #alt: "code block graphic"
 ---
@@ -16,40 +16,22 @@ But hold on for a second. Pipelines for music? As in CI ([Continuous Integration
 ## Background
 
 Nowadays most of music production happens 'in-the-box', using software referred to as Digital Audio Workstations (DAWs). DAWs to music are what Photoshop or Illustrator is to image editing. Or Premiere and Final Cut for video editing.
-<!-- 
-However, you occasionally want to preview your latest creations somewhere else than in front of your computer.
-In fact, the main goal of audio engineering is to make your track sound as good as possible in every listening environment.
-For instance, *The Car Test* is (TODO: link here) a well-known benchmark of how well your music is produced.
 
-In short, speaker quality and position is compromised. Engine and road noise leak into the cabin and mask frequencies, taking the life out of your track.
+As with video editing, to get a finished product, you'll have to **render** it. In short, during the rendering the DAW goes through all the bits and pieces in your song and comes up with a nice audio file, which you can then listen to, send forward etc.
 
-But how do you listen to your track in the car?
-
-Speaking of bouncing or rendering, what's the process behind this?
-
-- **Open the project in your DAW**
-- **Render it to a file**
-- **Copy it to some storage medium (phone, usb drive,)**
-
-The problem here is the amount of time it takes for the project to render. With larger projects, ~5 minutes per project is really common.
-
--->
-
-As with video editing, to get a finished product, you'll have to **render** it. In short, during the rendering the DAW goes through all the bits and pieces in your track and comes up with a nice audio file, which you can then listen to, send forward etc.
-
-However, the rendering process takes a while. Here's a short example: on my 16-core AMD 1700x machine, a song with ~120 tracks is rendered in roughly 2 time faster than playing it back in real time. So for a four minute song you'll have to sit around and wait two minutes.
+However, the rendering process takes a while. Here's a short example: on my 16-core AMD 1700x machine, a song with ~120 tracks is rendered in roughly 2 time faster than playing it back in real time. So for a four minute song you'll have to sit around and wait two minutes. 
 
 ![reaper_render_progress](images/reaper_render_progress.png)
 
 But what if you want to render multiple projects at once, for instance an EP (~5 songs) or a full album (~10 songs)? Now you're talking of ~15 minutes being wasted.
 
-Also, what if need to make a small edit and do a new revision? Do it all manually? **Every single time something changed?**. I think that's the unfortunate reality for many music producers.
+Also, what if need to make a small edit and do a new revision? Do it all manually? **Every single time something changed?** I think that's the unfortunate reality for many music producers.
 
 With that in mind, **CI pipelines for music** does make sense.
 
-## The Nail
+## What you'll need
 
-So how do you get started? Well, it depends *a lot* on your DAW of choice. For the purposes of this blog we are only focusing on [REAPER](https://www.reaper.fm/).
+So how do you get started? Well, it depends *a lot* on your DAW of choice. In this blog it's [REAPER](https://www.reaper.fm/).
 
 In the context of CI pipelines (and Git), you'll either need:
 
@@ -58,7 +40,7 @@ In the context of CI pipelines (and Git), you'll either need:
 
 Luckily REAPER keeps its project files in plain text format:
 
-```reaper
+```shell
 <REAPER_PROJECT 0.1 "6.66/linux-x86_64" 1662197272
   RIPPLE 0
   GROUPOVERRIDE 0 0 0
@@ -89,15 +71,15 @@ Luckily REAPER keeps its project files in plain text format:
   >
 ```
 
-This has the sided effect of compressing really well, in addition to suiting a Git-oriented workflow. I'm not (link) the only one by the way. See more [here](https://vi-control.net/community/threads/using-git-for-daw-project-files.70709/) and [here](https://forum.cockos.com/showthread.php?t=102268).
+This has the side effect of compressing really well, in addition to suiting a Git-oriented workflow. And I'm not the only one using git with REAPER. See more [here](https://vi-control.net/community/threads/using-git-for-daw-project-files.70709/) and [here](https://forum.cockos.com/showthread.php?t=102268).
 
-So now you have a repository full of project files, the next step is to set up some pipelines.
+So now you have a git repository full of project files. The next step is to set up some pipelines.
 
-## The Hammer
+## Lots of plumbing to come up with
 
-All CI services provide some ready-made runners, but in this case you need to roll your own.
+All CI services provide some ready-made runners, but in this case you need to build your own. A DAW isn't exactly high on the list of software to be included in CI runners, after all most of them are used for building software, rather than using it.
 
-Luckily again, REAPER is both
+Luckily though, REAPER has some great feats:
 
 - Portable ([12MB for a full DAW is rare to see](https://www.reaper.fm/download.php))
 - Can be run without a graphical interface
@@ -118,17 +100,17 @@ This is where the problem appears for our builds. In addition to the base progra
 
 Even though just a fraction of all plugins are available on Linux, I still have managed to download quite a few:
 
-![REAPER screenshot asking user if they want to add 1765 plugin instances](images/reaper_all_fx.png "No, I don't think I wan to add all these to a single track")
+![REAPER screenshot asking user if they want to add 1765 plugin instances](images/reaper_all_fx.png "No, I don't think I want to add all these effects to a single track")
 
-### Getting things built
+### A bit of local pipeline replacement
 
-Now all we need is a machine to do our builds. Packaging and installing all plugins to a CI-provided agent, or god forbid inside a container sounds like pure madness.
+Now all we need is a machine to do our builds. Packaging and installing all plugins to a CI-provided runner, or god forbid inside a container sounds like pure madness.
 
 #### The (almost) good part
 
-A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI agent there. Sounds simple enough, right?
+A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI runner there. Sounds simple enough, right?
 
-I went though this. You can copy your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
+I went through this. You can copy your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
 
 #### The bad
 
@@ -138,9 +120,9 @@ You could just copy the license files to the server in the same manner as you ar
 
 I did this as well. And what a pain it was.
 
-Most of the time GitLab agent runs as a different user for security reasons. With this, the home directory for the licenses is different than the user that you're configuring the server as.
+Most of the time GitLab CI agent runs as a different user for security reasons. With this, the home directory for the licenses is different than the user that you're configuring the server as.
 
-For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the tracks. This is a common method for plugins to indicate they're being run caused by the  in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
+For the time I was using the VPS to render the builds, there was always a very audible cracking sound in some parts of the songs. This is a common method for plugins to indicate they're being run caused by the  in demo mode. Even though I copied the license files for **both** users, the issue still persisted.
 
 All in all, what happens if some plugin just happens to go to a degraded state? How will you debug this?
  Are you going to install a remote desktop service to the machine? Start your DAW on the remote desktop connection and try opening the project there?
@@ -153,9 +135,9 @@ But wait, there's more problems. In addition to the missing licenses, the songs 
 
 With a lot of time wasted, there has to be a better option.
 
-## Just render locally
+## Just do it locally
 
-If you want to get your tracks rendered **exactly** the way you would get them on your local machine, the best way is to render them on the **same machine** as you produce your music on.
+If you want to get your songs rendered **exactly** the way you would get them on your local machine, the best way is to render them on the **same machine** as you produce your music on.
 
 Okay, so how to accomplish then? The rendering process still takes ~15 min and all of your CPU.
 
@@ -169,7 +151,7 @@ The only thing you'll lose is the quick feedback, but at least you have proper-s
 
 Let's start off with rendering the projects. Consider the following file structure of REAPER projects:
 
-```
+```shell
 Projects
 |--subfolder
    |--project1
@@ -216,9 +198,7 @@ for file in ${names[*]} ; do cp "$file".mp3 <SHARED_RUNNER_DIRECTORY>; done
 
 (Replace `<RENDER_TARGET_DIRECTORY>` with the folder your renders are located at, and   `<SHARED_RUNNER_DIRECTORY>` with the folder you can give the runner an access)
 
-Lastly, I need something to populate my git commits. To be realistic, I'm never going to look at any commit messages, all I'm interested in that which files were changed.
-
-For this, you can use another script, `push_updates.sh
+Lastly, I need something to populate my git commits. To be realistic, I'm never going to look at any commit messages, all I'm interested in that which files were changed. For this, you can use another script, `push_updates.sh`:
 
 ```bash
 #!/bin/bash
@@ -229,17 +209,21 @@ git commit -m"$changed_files"
 git push
 ```
 
+The script builds a commit message from the current git status, giving you an automatic short summary on which projects were updated on that particular commit.
+
 Now, you can run
 
 ```shell
 ./render_script.sh && ./push_updates.sh`
 ```
 
-which renders all projects and pushes your latest changes and triggers the CI job.
+which renders all projects and pushes latest changes when rendering has finished. But we're not quite done yet.
 
 #### Pipelines
 
-Next, you'll need to setup CI (`.gitlab-ci.yaml`):
+Finally we get to the actual **pipelines** point of this. I'll only focus on GitLab CI since that's where this project is hosted.
+
+First, setup some kind of YAML file for GitLab CI (`.gitlab-ci.yaml`):
 
 ```yaml
 stages:
@@ -257,8 +241,6 @@ render:
             - ./*.mp3
 
 ```
-
-![pipeline_jobs](images/pipeline_jobs.png)
 
 The "bounce" step here really only publishes the MP3 files from the shared directory. After that, they can be used by the `build` stage.
 
@@ -299,3 +281,20 @@ Next, in Index.js, you can display all of the files from Gatsby data with the fo
 })}
 ```
 
+Now that you have the pipeline, using the command `./render_script.sh && ./push_updates.sh` should result in a new pipeline run:
+
+![pipeline_jobs](images/pipeline_jobs.png)
+
+Which results in a website containing your songs:
+
+![static_site_songs](images/static_site_songs.png)
+
+----
+
+### Jumping to conclusions
+
+To sum it up, your ideas may be relevant, but execution matters. A lot. In this case, the resulting tooling is genuinely useful: I can listen to drafts of my songs whenever I need, albeit I have to remember to first create those renders every once in a while. Which isn't a tremendeous problem.
+
+In fact, I've been using the current setup for 3 years now. Although the old revisions are long gone due to GitLab saving space on pipeline artifacts, if needed I can still run `git checkout` to some old revision and listen to the songs there.
+
+One of the features that I also really enjoy is making a playlist of all the files found on the static site. But that's a post for another time.
