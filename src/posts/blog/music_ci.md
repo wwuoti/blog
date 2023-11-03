@@ -39,7 +39,7 @@ As with video editing, to get a finished product, you'll have to **render** it. 
 
 However, the rendering process takes a while. Here's a short example: on my 16-core AMD 1700x machine, a song with ~120 tracks is rendered in roughly 2 time faster than playing it back in real time. So for a four minute song you'll have to sit around and wait two minutes.
 
-![reaper_render_progress](/.attachments/reaper_render_progress.png)
+![reaper_render_progress](images/reaper_render_progress.png)
 
 But what if you want to render multiple projects at once, for instance an EP (~5 songs) or a full album (~10 songs)? Now you're talking of ~15 minutes being wasted.
 
@@ -118,15 +118,19 @@ This is where the problem appears for our builds. In addition to the base progra
 
 Even though just a fraction of all plugins are available on Linux, I still have managed to download quite a few:
 
-![REAPER screenshot asking user if they want to add 1765 plugin instances](/.attachments/reaper_all_fx.png "No, I don't think I wan to add all these to a single track")
+![REAPER screenshot asking user if they want to add 1765 plugin instances](images/reaper_all_fx.png "No, I don't think I wan to add all these to a single track")
 
 ### Getting things built
 
 Now all we need is a machine to do our builds. Packaging and installing all plugins to a CI-provided agent, or god forbid inside a container sounds like pure madness.
 
+#### The (almost) good part
+
 A more straightforward way is to rent a server somewhere, install your DAW, plugins, and a CI agent there. Sounds simple enough, right?
 
 I went though this. You can copy your plugins reasonably easily, most of them are user-installed in `~/.vst` and `~/.vst3`. Copy these to the server and you'll have your plugins.
+
+#### The bad
 
 Just one thing: **licensing**. Most of (good) plugins require licenses of some sort. For instance, the [u-he](https://u-he.com/) plugins expect license files to be found on your home directory.
 
@@ -143,24 +147,21 @@ All in all, what happens if some plugin just happens to go to a degraded state? 
 
  What about if the server does not have the power to run your DAW in real time? Since rendering happens offline, it would make sense to get a relatively cheap server, it's not like your music pipelines need to be that fast. On the other hand, this doesn't even take in the account that the VM might not have a sound card available.
 
+#### The really ugly
+
 But wait, there's more problems. In addition to the missing licenses, the songs rendered **sounded** completely different. It's like there were some effects missing. So not only are paid plugins a problem, you also have to deal with individual plugins not loading on the server due to incompatible libraries, for instance.
 
 With a lot of time wasted, there has to be a better option.
 
 ## Just render locally
 
-If you want to get your tracks rendered **exactly** the way you would get them on your local machine, the best way is to **render them on your local machine.**
+If you want to get your tracks rendered **exactly** the way you would get them on your local machine, the best way is to render them on the **same machine** as you produce your music on.
 
-Okay, so how to accomplish then? The rendering process still takes ~15 min and all of your CPU. If you try to schedule this, you're going to be very surprised (or annoyed) by your CPU usage going to 100% at some point.
+Okay, so how to accomplish then? The rendering process still takes ~15 min and all of your CPU.
 
-But how often you need the new revisions anyway? What if:
-- crate new renders every once in a while
-- run a CI job which collects new samples
-- Build static site out of that
+If you try to schedule this, you're going to be very surprised (or annoyed) by your CPU usage going to 100% at some point.
 
-With this, you'd get:
-- Reasonably up-to-date builds
-- No extra plugin maintenance
+But maybe you can just run the builds every once in a while?
 
 The only thing you'll lose is the quick feedback, but at least you have proper-sounding builds.
 
@@ -231,10 +232,12 @@ git push
 Now, you can run
 
 ```shell
-$ ./render_script.sh && ./push_updates.sh`
+./render_script.sh && ./push_updates.sh`
 ```
 
 which renders all projects and pushes your latest changes and triggers the CI job.
+
+#### Pipelines
 
 Next, you'll need to setup CI (`.gitlab-ci.yaml`):
 
@@ -255,15 +258,25 @@ render:
 
 ```
 
+![pipeline_jobs](images/pipeline_jobs.png)
+
 The "bounce" step here really only publishes the MP3 files from the shared directory. After that, they can be used by the `build` stage.
 
-The `build` stage is where the static site containing the songs is built. Here I'm using Gatsby, which has good documentation TODO: gitlab docs here.
+#### Static site generation
 
+The `build` stage is where the static site containing the songs is built. Here I'm using Gatsby, which has [good documentation for deploying to GitLab pages](https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/deploying-to-gitlab-pages/).
 
-The only interesting part here is embeddkng th MP3 files to the page:
+Just for reference, here's how to embed MP3 files to the page. In `gatsby-config.js`, ensure you have this:
 
-TODO: show how to list files
+```js
+  resolve: `gatsby-source-filesystem`,
+  options: {
+    name: `bounces`,
+    path: `<SHARED_RUNNER_DIRECTORY>`,
+  },
+```
 
+Where `<SHARED_RUNNER_DIRECTORY>` is again the folder you've shared with GitLab runner.
 
 Next, in Index.js, you can display all of the files from Gatsby data with the following:
 
@@ -285,7 +298,4 @@ Next, in Index.js, you can display all of the files from Gatsby data with the fo
   )
 })}
 ```
-
-Getti
-
 
