@@ -22,9 +22,9 @@ const metaConfig = {
   author: "Elias Wuoti",
   siteUrl: "https://wwuoti.github.io/",
   lang: "en",
-  utterances: "https://github.com/wwuoti/blog",
+  utterances: "https://github.com/wwuoti/wwuoti.github.io",
   links: {
-    github: "https://github.com/wwuoti/blog",
+    github: "https://github.com/wwuoti/wwuoti.github.io",
   },
   favicon: "src/images/icon.png",
 }
