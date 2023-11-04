@@ -3,7 +3,7 @@ title: "Pipelines for music production"
 category: "Music"
 date: "2023-11-04 12:22"
 desc: "Plumbing your song drafts forward"
-thumbnail: "./images/default.jpg"
+thumbnail: "./images/music_ci_plumbing.png"
 alt: "markdown logo"
 ---
 
