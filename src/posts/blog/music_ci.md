@@ -7,6 +7,8 @@ thumbnail: "./images/music_ci_plumbing.png"
 alt: "markdown logo"
 ---
 
+![Music producer workign on their song pipelines](./images/music_ci_plumbing.png)
+
 <!-- markdownlint-disable line-length -->
 
 <i>When releasing new music, I've had the habit of notifying a friend of mine just after a new song hit Spotify. This continued for a while, and my friend joked about having exclusive access to my music pipelines, which I always found funny. </i>
