@@ -1,10 +1,10 @@
 ---
 title: "Pipelines for music production"
 category: "Music"
-date: "2023-10-19 20:25"
+date: "2023-11-04 12:22"
 desc: "Plumbing your song drafts forward"
 thumbnail: "./images/default.jpg"
-#alt: "code block graphic"
+alt: "markdown logo"
 ---
 
 <!-- markdownlint-disable line-length -->
