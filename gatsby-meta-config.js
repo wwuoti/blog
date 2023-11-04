@@ -19,12 +19,12 @@
 const metaConfig = {
   title: "Elias Wuoti",
   description: `Elias Wuoti's Blog`,
-  author: "Wuoti",
-  siteUrl: "https://gatsby-starter-apple.netlify.app",
+  author: "Elias Wuoti",
+  siteUrl: "https://wwuoti.github.io",
   lang: "en",
-  utterances: "sungik-choi/gatsby-starter-apple-comment",
+  utterances: "https://github.com/wwuoti/blog",
   links: {
-    github: "https://github.com/sungik-choi/gatsby-starter-apple",
+    github: "https://github.com/wwuoti/blog",
   },
   favicon: "src/images/icon.png",
 }
