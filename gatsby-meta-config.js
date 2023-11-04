@@ -18,7 +18,7 @@
 /** @type {MetaConfig} */
 const metaConfig = {
   title: "Elias Wuoti",
-  description: `Elias Wuoti's Blog`,
+  description: "Elias Wuoti's Blog",
   author: "Elias Wuoti",
   siteUrl: "https://wwuoti.github.io/blog",
   lang: "en",
@@ -30,4 +30,4 @@ const metaConfig = {
 }
 
 // eslint-disable-next-line no-undef
-module.exports = metaConfig
+module.exports = metaConfig;
