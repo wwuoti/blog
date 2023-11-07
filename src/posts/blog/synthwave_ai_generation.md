@@ -9,27 +9,123 @@ alt: "markdown logo"
 
 <!-- markdownlint-disable line-length -->
 
-Progression in generative AI has made quite some leaps during the past year. Audio generation has been progressing as well
+Progression in generative AI has made quite some leaps during the past year. You've seen the image generation, conversing text AIs, and vastly improved text-to-speech AIs as well. But what about music?
 
-Riffusion (Stable diffusion trained on song spectrograms) was an interesting approach when it came out.
+Well, progress has been varying. There's [Riffusion](https://github.com/riffusion/riffusion), Stable diffusion trained on song spectrograms. was an interesting approach when it came out. Being based on generative AI for images limits it too much though: the songs have a distinctive sound reminiscent of low bitrate MP3s.
 
-Being based on generative AI for images limits it too much though: There's not a lot of room
+On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers: neither the models or training tools are public. Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training OpenMusicLM would take days on a conventional system, and the complex checkpoints setup doesn't really result in any practical results.
+
+However, there's another valuable point. If you have a niche enough genre, believe it or not, there's not enough music available. It might also be that 
 
 TODO: describe synthwave genre here
 
-TODO. intro on Meta's audiocraft 
+And then there's AudioCraft, or more precisely MusicGen
+
+Just like people thought that GPT-4 showed "sparks of AGI", . Well, if it only was true stereo. Right now it reminds you of 
 
 The best thing is that you can run this locally.
 
 ## Prompting
 
-We need some prompts. So let's generate them with ChatGP.
+Since I'm running this locally on my own machine, I'm only constrained by GPU memory, patience and my electricity bill. As long as I have a long enough list of prompts, I can leave my machine 
 
-***Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder."***
+But first, we need some prompts. And a lot of them. So let's generate them with ChatGpt:
+
+```
+Prompt
+1, "Create an 80s retrowave track with an upbeat tempo and a catchy synth melody."
+2, "Imagine an 80s neon-lit cityscape at night and translate it into a full retrowave track."
+3, "Design a complete retro-futuristic 80s retrowave track with nostalgic vibes."
+4, "Compose a full retrowave track with a driving rhythm, pulsating bass, and punchy drums."
+5, "Incorporate classic analog synth sounds reminiscent of the 80s into a complete track."
+6, "Give the full track a dreamy, cinematic quality with ethereal pads and arpeggios."
+7, "Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder in a complete track."
+8, "Create a complete track that captures a futuristic atmosphere with cosmic sound effects."
+9, "Inspired by VHS aesthetics, make a complete lo-fi retrowave track with a vintage vibe."
+10, "Design a dynamic chord progression for an entire retrowave track that captures the essence of the 80s."
+11, "Experiment with vocoder vocals for the entire track, giving it a robotic, retro touch."
+12, "Imagine a high-speed chase scene and compose the complete soundtrack for it in retrowave style."
+13, "Infuse the complete track with a sense of nostalgia for the 80s era."
+14, "Conjure a complete sense of optimism and adventure in the entire retrowave track."
+15, "Incorporate elements of cyberpunk aesthetics into the full retrowave sound."
+16, "Emulate the iconic FM synthesis of the 80s in melodies throughout the track."
+17, "Create a complete blend of electronic and acoustic instruments for a unique retrowave twist."
+18, "Take inspiration from retro video game music and create a complete track with a nostalgic twist."
+19, "Design a breakdown in the middle of the track that transports the listener to a virtual reality."
+20, "Make the listener feel like they're cruising in a DeLorean through time with a full retrowave track."
+21, "Utilize vintage drum machines throughout the entire track for an authentic retro beat."
+22, "Think of a retro-futuristic love story and compose its complete retrowave soundtrack."
+23, "Introduce a saxophone solo in the full track for that smooth, jazzy retrowave touch."
+24, "Blend elements of Italo disco with retrowave for a danceable and complete track."
+25, "Emulate the warm, analog tape sound of the 80s throughout the entire track."
+26, "Create a complete intro that sets the stage for a cosmic retrowave adventure."
+27, "Capture the essence of Blade Runner in a full retrowave track."
+28, "Incorporate retro computer game sounds and bleeps into the entire composition."
+29, "Create a sense of nostalgia for old-school arcades with a complete retrowave track."
+30, "Convey the feeling of driving on an endless highway with the top down in a full retrowave track."
+31, "Make the listener feel like they're exploring a digital dreamscape in a complete retrowave track."
+32, "Incorporate shimmering, arpeggiated synths throughout the entire cosmic retrowave track."
+33, "Imagine an intergalactic space battle and compose the complete retrowave soundtrack for it."
+34, "Mix in a bit of funk and disco grooves for added danceability in a full retrowave track."
+35, "Infuse the track with the sound of rain and thunder for atmosphere throughout the entire retrowave composition."
+36, "Create a complete track that feels like a journey through a virtual world in a retrowave style."
+37, "Incorporate retro-inspired drum fills for that vintage sound throughout the entire retrowave track."
+38, "Emulate the iconic Roland Juno synth sound in melodies and sounds throughout the complete track."
+39, "Channel the spirit of retro anime intros in your music for a complete retrowave track."
+40, "Create a sense of longing and nostalgia with melodies throughout the full retrowave track."
+41, "Think of a cyberpunk dystopia and compose the complete sonic backdrop in retrowave style."
+42, "Introduce a vocoded countdown as a thematic element in a full retrowave track."
+43, "Capture the excitement of an 80s action movie in the entire retrowave track."
+44, "Use gated reverb on the drums for that classic sound throughout the full retrowave track."
+45, "Emulate the sound of an old CRT TV powering up in the intro and maintain the vintage vibe throughout the complete track."
+46, "Create a retro-style music video concept to go along with the entire retrowave track."
+47, "Imagine an otherworldly encounter and express it through the complete retrowave music."
+48, "Incorporate retro synthwave aesthetics into the album artwork to complement the full track."
+49, "Think of a digital love story and translate it into melodies for the complete retrowave track."
+50, "Compose a chorus for the entire track that's both anthemic and nostalgic in the retrowave style."
+51, "Emulate the distinct sound of the Yamaha DX7 synthesizer throughout the full retrowave track."
+52, "Think of an 80s movie training montage and compose the training soundtrack in retrowave style."
+53, "Introduce laser sound effects for a futuristic touch throughout the entire retrowave track."
+54, "Capture the spirit of the Tron soundtrack in the full retrowave track."
+55, "Create a track that feels like a ride in a virtual roller coaster in retrowave style."
+56, "Incorporate spoken word samples from iconic 80s movies into the entire retrowave composition."
+57, "Design a retro-inspired album cover with neon colors and gridlines to complement the full retrowave track."
+58, "Imagine a retro arcade game's final boss battle and create its music in retrowave style."
+59, "Mix in elements of post-apocalyptic ambiance for a darker tone throughout the complete retrowave track."
+60, "Introduce a vocoded AI voice as a central theme in the entire retrowave track."
+61, "Convey the feeling of a cyber espionage mission in the full retrowave track."
+62, "Think of a neon-lit dance floor and create its anthem in retrowave style for the complete track."
+63, "Create a sense of mystery and intrigue with melodies throughout the full retrowave track."
+64, "Emulate the warmth of analog tape saturation in your mix for the entire retrowave track."
+65, "Imagine a retro future city skyline and translate it into sound for the complete retrowave track."
+66, "Incorporate elements of new wave and post-punk into the full retrowave track for a unique twist."
+67, "Design a breakdown that feels like a digital transformation in the middle of the complete retrowave track."
+68, "Make the listener feel like they're hacking into a virtual world throughout the entire retrowave track."
+69, "Channel the energy of retro sci-fi B-movie soundtracks in the full retrowave track."
+70, "Incorporate samples of 80s TV commercials into the composition for the entire ret
+```
+
+To be honest, a lot of these aren't that good. Although in my experience song quality is not really relevant to prompt quality. You might get 
+
+Anyway, let's dump these into a file, say `prompts.csv`.
+
+Next, we're going to need some 
+
+## Results
+
+Let's look at individual prompt results.
+
+### The good
+
+***Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.***
 
 <audio controls>
   <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/mp3" />
 </audio>
+
+### The bad
+
+### The "What on earth?"-category
 
 ## Issues
 
