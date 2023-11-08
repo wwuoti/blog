@@ -15,13 +15,16 @@ Well, progress has been varying. There's [Riffusion](https://github.com/riffusio
 
 On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers: neither the models or training tools are public. Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training OpenMusicLM would take days on a conventional system, and the complex checkpoints setup doesn't really result in any practical results.
 
-However, there's another valuable point. If you have a niche enough genre, believe it or not, there's not enough music available. It might also be that 
-
-TODO: describe synthwave genre here
 
 And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md). Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of . Well, if it only was true stereo. Right now it's mono-only, and although there are [projects](https://github.com/GrandaddyShmax/audiocraft_plus) which contain "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
 
 The best thing is that you can run this locally.
+
+None of the models really support vocals, so focus is instead on instrumental music.
+
+However, there's another valuable point. If you have a niche enough genre, believe it or not, there's not enough music available. It might also be that 
+
+TODO: describe synthwave genre here
 
 ----
 
@@ -123,7 +126,7 @@ with open(csv_file, 'r', newline='') as file:
 
 ### Using MusicGen
 
-For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium). This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs. 
+For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium). This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs.
 
 ## Results
 
@@ -145,6 +148,17 @@ But with a second pass, you get this result
 
 **Take inspiration from retro video game music for a nostalgic twist**
 
+
+## So how does this benchmark?
+
+I can't believe I'm even considering this question. I've made a my fair share of Synthwave, so let's take a small comparison. I had been producing music on a computer for ~4 years and just moved to producing Synthwave. The production is fairly amateurish, but not from a complete novice either.
+
+Also, I'll use a mono version of my song to balance the comparison against MusicGen. Have a guess, which 30 second clip is from my song and which comes from MusicGen?
+
+### Song 1
+
+### Song 2
+
 ----
 
 ## Local installation
@@ -152,7 +166,7 @@ But with a second pass, you get this result
 You want to try this out as well? To get started, first clone the AudioCraft repository somewhere:
 
 ```bash
-git clone 
+git clone https://github.com/facebookresearch/audiocraft.git
 ```
 
 Next, ensure you have a new, clean virtual environment
@@ -162,15 +176,32 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install the repository as a symlinked module
+**NOTE: If you have an AMD GPU, install ROCm-versions of pytorch:**
+
+```shell
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2
+```
+
+Install the repository as a symlinked module:
 
 ```shell
 pip install -e .
 ```
 
-Get the full Python script used earlier from here (TODO: github gist).
+Get the full Python script shown earlier from here (TODO: github gist).
 
-Next, 
+Now running the script should start the process.
+
+To my surprise, MusiGgen works just fine even though [xFormers does not support ROCm](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3949). This is also the reason you'll get the error message when running the script on an AMD GPU:
+
+> WARNING[XFORMERS]: xFormers can't load C++/CUDA extensions. xFormers was built for:
+>   PyTorch 2.0.1+cu118 with CUDA 1108 (you have 2.0.1+rocm5.4.2)
+>   Python  3.10.13 (you have 3.10.12)
+> Please reinstall xformers (see https://github.com/facebookresearch/xformers#installing-xformers)
+> Memory-efficient attention, SwiGLU, sparse and more won't be available.
+> Set XFORMERS_MORE_DETAILS=1 for more details
+
+But like any true end user, we can't read error messages and instead focus on the output whether or not we get something out of the program.
 
 
 ## Issues
