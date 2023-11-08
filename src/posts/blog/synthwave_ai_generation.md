@@ -3,36 +3,39 @@ title: "On generative AI for music"
 category: "Music"
 date: "2023-11-06 12:22"
 desc: "How Audiocraft handles Synthwave"
-thumbnail: "./images/default.jpg"
+thumbnail: "./images/synthwave_ai_generation.png"
 alt: "markdown logo"
 ---
 
 <!-- markdownlint-disable line-length -->
 
-Progression in generative AI has made quite some leaps during the past year. You've seen the image generation, conversing text AIs, and vastly improved text-to-speech AIs as well. But what about music?
+![Cover art: oscilloscope signal in synthwave style, controlled by artificial intelligence ](./images/synthwave_ai_generation.png)
+
+Progression in generative AI has made quite some leaps during the past year. You've seen the image generation, conversing chat AIs and vastly improved speech modification AIs. But what about generative AIs for music?
 
 Well, progress has been varying. There's [Riffusion](https://github.com/riffusion/riffusion), Stable diffusion trained on song spectrograms. was an interesting approach when it came out. Being based on generative AI for images limits it too much though: the songs have a distinctive sound reminiscent of low bitrate MP3s.
 
-On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers: neither the models or training tools are public. Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training OpenMusicLM would take days on a conventional system, and the complex checkpoints setup doesn't really result in any practical results.
+On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers:  Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training [OpenMusicLM](https://github.com/zhvng/open-musiclm) would take days on any conventional system, and the complex checkpoints setup doesn't really result in any practical results.
 
+And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
 
-And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md). Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of . Well, if it only was true stereo. Right now it's mono-only, and although there are [projects](https://github.com/GrandaddyShmax/audiocraft_plus) which contain "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
+Well, if it only was true stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus)  "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
 
-The best thing is that you can run this locally.
+**The best thing is that you can run AudioCraft locally.**
 
-None of the models really support vocals, so focus is instead on instrumental music.
-
-However, there's another valuable point. If you have a niche enough genre, believe it or not, there's not enough music available. It might also be that 
-
-TODO: describe synthwave genre here
+None of the models (Riffusion, MusicLM, MusicGen) really support vocals, so let's focus on creating instrumental music. All we need now is a genre to evaluate? I'll pick [Synthwave/Retrowave](https://en.wikipedia.org/wiki/Synthwave), since it has relatively static compositions.
 
 ----
 
 ## Prompting
 
-Since I'm running this locally on my own machine, I'm only constrained by GPU memory, patience and my electricity bill. As long as I have a long enough list of prompts, I can leave my machine 
+Since I'm running this locally on my own PC, I'm only constrained by GPU memory, patience and my electricity bill. As long as I have a long enough list of prompts, I can leave my PC running and return to multiple albums (although with very short songs) worth of music.
 
 But first, we need some prompts. And a lot of them. So let's generate them with ChatGpt:
+
+>I have a music-creating AI which creates songs based on prompts. I want to hear 80s inspired retrowave, but need a series of prompts to create the music from. Create me 100 prompts in .csv form for 80s retrowave music.
+
+Funnily enough, GPT-3.5 only gave me 70 prompts. But at least we can paste them to a CSV file:
 
 ```csv
 Prompt
@@ -63,60 +66,20 @@ Prompt
 25, "Emulate the warm, analog tape sound of the 80s throughout the entire track."
 26, "Create a complete intro that sets the stage for a cosmic retrowave adventure."
 27, "Capture the essence of Blade Runner in a full retrowave track."
-28, "Incorporate retro computer game sounds and bleeps into the entire composition."
-29, "Create a sense of nostalgia for old-school arcades with a complete retrowave track."
-30, "Convey the feeling of driving on an endless highway with the top down in a full retrowave track."
-31, "Make the listener feel like they're exploring a digital dreamscape in a complete retrowave track."
-32, "Incorporate shimmering, arpeggiated synths throughout the entire cosmic retrowave track."
-33, "Imagine an intergalactic space battle and compose the complete retrowave soundtrack for it."
-34, "Mix in a bit of funk and disco grooves for added danceability in a full retrowave track."
-35, "Infuse the track with the sound of rain and thunder for atmosphere throughout the entire retrowave composition."
-36, "Create a complete track that feels like a journey through a virtual world in a retrowave style."
-37, "Incorporate retro-inspired drum fills for that vintage sound throughout the entire retrowave track."
-38, "Emulate the iconic Roland Juno synth sound in melodies and sounds throughout the complete track."
-39, "Channel the spirit of retro anime intros in your music for a complete retrowave track."
-40, "Create a sense of longing and nostalgia with melodies throughout the full retrowave track."
-41, "Think of a cyberpunk dystopia and compose the complete sonic backdrop in retrowave style."
-42, "Introduce a vocoded countdown as a thematic element in a full retrowave track."
-43, "Capture the excitement of an 80s action movie in the entire retrowave track."
-44, "Use gated reverb on the drums for that classic sound throughout the full retrowave track."
-45, "Emulate the sound of an old CRT TV powering up in the intro and maintain the vintage vibe throughout the complete track."
-46, "Create a retro-style music video concept to go along with the entire retrowave track."
-47, "Imagine an otherworldly encounter and express it through the complete retrowave music."
-48, "Incorporate retro synthwave aesthetics into the album artwork to complement the full track."
-49, "Think of a digital love story and translate it into melodies for the complete retrowave track."
-50, "Compose a chorus for the entire track that's both anthemic and nostalgic in the retrowave style."
-51, "Emulate the distinct sound of the Yamaha DX7 synthesizer throughout the full retrowave track."
-52, "Think of an 80s movie training montage and compose the training soundtrack in retrowave style."
-53, "Introduce laser sound effects for a futuristic touch throughout the entire retrowave track."
-54, "Capture the spirit of the Tron soundtrack in the full retrowave track."
-55, "Create a track that feels like a ride in a virtual roller coaster in retrowave style."
-56, "Incorporate spoken word samples from iconic 80s movies into the entire retrowave composition."
-57, "Design a retro-inspired album cover with neon colors and gridlines to complement the full retrowave track."
-58, "Imagine a retro arcade game's final boss battle and create its music in retrowave style."
-59, "Mix in elements of post-apocalyptic ambiance for a darker tone throughout the complete retrowave track."
-60, "Introduce a vocoded AI voice as a central theme in the entire retrowave track."
-61, "Convey the feeling of a cyber espionage mission in the full retrowave track."
-62, "Think of a neon-lit dance floor and create its anthem in retrowave style for the complete track."
-63, "Create a sense of mystery and intrigue with melodies throughout the full retrowave track."
-64, "Emulate the warmth of analog tape saturation in your mix for the entire retrowave track."
-65, "Imagine a retro future city skyline and translate it into sound for the complete retrowave track."
-66, "Incorporate elements of new wave and post-punk into the full retrowave track for a unique twist."
-67, "Design a breakdown that feels like a digital transformation in the middle of the complete retrowave track."
-68, "Make the listener feel like they're hacking into a virtual world throughout the entire retrowave track."
-69, "Channel the energy of retro sci-fi B-movie soundtracks in the full retrowave track."
-70, "Incorporate samples of 80s TV commercials into the composition for the entire ret
+...
 ```
 
-To be honest, a lot of these prompts aren't that good, but luckily it doesn't matter that much: In my experience song quality is not really correlated to prompt quality. You might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same prompt.
+Full CSV here (TODO: link to csv)
 
-Anyway, let's dump these into a file, say `prompts.csv`.
+To be honest, a lot of these prompts aren't that good, but luckily it doesn't matter that much: In my experience song quality is not really correlated to prompt quality. You might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same prompt.
 
 Next, we need to parse them:
 
 ```python
 descriptions = []
-csv_file = 'prompts2.csv'  # Replace with the path to your CSV file
+csv_file = args.csv_file
+duration = args.duration
+
 with open(csv_file, 'r', newline='') as file:
     csv_reader = csv.reader(file, delimiter=",", quotechar='"')
     for row in csv_reader:
@@ -141,6 +104,12 @@ Let's look at individual prompt results.
 </audio>
 
 But with a second pass, you get this result
+
+<audio controls>
+  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder_run2.wav" type="audio/mp3" />
+</audio>
+
+So yeah, with this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again.
 
 ### The bad
 
@@ -178,19 +147,23 @@ source .venv/bin/activate
 
 **NOTE: If you have an AMD GPU, install ROCm-versions of pytorch:**
 
-```shell
+```bash
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2
 ```
 
 Install the repository as a symlinked module:
 
-```shell
+```bash
 pip install -e .
 ```
 
 Get the full Python script shown earlier from here (TODO: github gist).
 
-Now running the script should start the process.
+Now running the script should start the process:
+
+```bash
+python test.py --csv_file prompts.csv --song_length 30
+```
 
 To my surprise, MusiGgen works just fine even though [xFormers does not support ROCm](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3949). This is also the reason you'll get the error message when running the script on an AMD GPU:
 
@@ -203,7 +176,6 @@ To my surprise, MusiGgen works just fine even though [xFormers does not support 
 
 But like any true end user, we can't read error messages and instead focus on the output whether or not we get something out of the program.
 
-
 ## Issues
 
 ### Reproducability
@@ -214,12 +186,13 @@ See this first attempt, quite a song
 
 And then, a second pass with the exact same prompt:
 
-
 ### Control
 
 Music needs a lot of fine control, and text prompts just aren't good enough interfaces.
 
-### Future
+## Future
+
+This is the part where the boring evaluation ends and wild speculation starts.
 
 One thing which these models focus (perhaps) too much on is generating music just from a text prompt. Or simple melodies.
 
@@ -229,7 +202,7 @@ At least when you start factoring in the variety of genres it can produce.
 
 But the problem is still the details in the composition. It sort of suffers from the same issue as most: the composition itself is not interesting enough.
 
-So how would you measure the composition quality? Well, current AI can't act as a music critique, so the closes thing is our intuition.
+So how would you measure the composition quality? Well, current AI can't act as a music critique, so the closest thing is our own intuition. Or maybe a real music critic.
 
 Imagine the song played live by an orchestra. Or a small band at your local venue. Would you consider it good?
 
