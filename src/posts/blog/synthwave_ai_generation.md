@@ -19,11 +19,11 @@ However, there's another valuable point. If you have a niche enough genre, belie
 
 TODO: describe synthwave genre here
 
-And then there's AudioCraft, or more precisely MusicGen
-
-Just like people thought that GPT-4 showed "sparks of AGI", . Well, if it only was true stereo. Right now it reminds you of 
+And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md). Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of . Well, if it only was true stereo. Right now it's mono-only, and although there are [projects](https://github.com/GrandaddyShmax/audiocraft_plus) which contain "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
 
 The best thing is that you can run this locally.
+
+----
 
 ## Prompting
 
@@ -31,7 +31,7 @@ Since I'm running this locally on my own machine, I'm only constrained by GPU me
 
 But first, we need some prompts. And a lot of them. So let's generate them with ChatGpt:
 
-```
+```csv
 Prompt
 1, "Create an 80s retrowave track with an upbeat tempo and a catchy synth melody."
 2, "Imagine an 80s neon-lit cityscape at night and translate it into a full retrowave track."
@@ -105,11 +105,25 @@ Prompt
 70, "Incorporate samples of 80s TV commercials into the composition for the entire ret
 ```
 
-To be honest, a lot of these aren't that good. Although in my experience song quality is not really relevant to prompt quality. You might get 
+To be honest, a lot of these prompts aren't that good, but luckily it doesn't matter that much: In my experience song quality is not really correlated to prompt quality. You might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same prompt.
 
 Anyway, let's dump these into a file, say `prompts.csv`.
 
-Next, we're going to need some 
+Next, we need to parse them:
+
+```python
+descriptions = []
+csv_file = 'prompts2.csv'  # Replace with the path to your CSV file
+with open(csv_file, 'r', newline='') as file:
+    csv_reader = csv.reader(file, delimiter=",", quotechar='"')
+    for row in csv_reader:
+        prompt = row[1]
+        descriptions.append(prompt)
+```
+
+### Using MusicGen
+
+For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium). This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs. 
 
 ## Results
 
@@ -123,9 +137,41 @@ Let's look at individual prompt results.
   <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/mp3" />
 </audio>
 
+But with a second pass, you get this result
+
 ### The bad
 
 ### The "What on earth?"-category
+
+**Take inspiration from retro video game music for a nostalgic twist**
+
+----
+
+## Local installation
+
+You want to try this out as well? To get started, first clone the AudioCraft repository somewhere:
+
+```bash
+git clone 
+```
+
+Next, ensure you have a new, clean virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install the repository as a symlinked module
+
+```shell
+pip install -e .
+```
+
+Get the full Python script used earlier from here (TODO: github gist).
+
+Next, 
+
 
 ## Issues
 
@@ -147,7 +193,8 @@ Music needs a lot of fine control, and text prompts just aren't good enough inte
 One thing which these models focus (perhaps) too much on is generating music just from a text prompt. Or simple melodies.
 
 The interesting bit is that in terms of production quality, MusicGen's output is actually pretty nice. I would argue that it would takes several years for a complete beginner to get this far in terms of production.
-At least when you start factoring in the variety of genres it can produce. 
+
+At least when you start factoring in the variety of genres it can produce.
 
 But the problem is still the details in the composition. It sort of suffers from the same issue as most: the composition itself is not interesting enough.
 
@@ -156,6 +203,4 @@ So how would you measure the composition quality? Well, current AI can't act as 
 Imagine the song played live by an orchestra. Or a small band at your local venue. Would you consider it good?
 
 But the opposite is where things start getting more interested: what happens when you can feed a draft of your song to the AI?
-
-
 
