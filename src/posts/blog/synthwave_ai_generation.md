@@ -1,10 +1,10 @@
 ---
-title: "On generative AI for music"
-category: "Music"
-date: "2023-11-06 12:22"
-desc: "How Audiocraft handles Synthwave"
-thumbnail: "./images/synthwave_ai_generation.png"
-alt: "markdown logo"
+title:"On generative AI for music"
+category:"Music"
+date:"2023-11-06 12:22"
+desc:"How Audiocraft handles Synthwave"
+thumbnail:"./images/synthwave_ai_generation.png"
+alt:"markdown logo"
 ---
 
 <!-- markdownlint-disable line-length -->
@@ -17,9 +17,9 @@ Well, progress has been varying. There's [Riffusion](https://github.com/riffusio
 
 On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers:  Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training [OpenMusicLM](https://github.com/zhvng/open-musiclm) would take days on any conventional system, and the complex checkpoints setup doesn't really result in any practical results.
 
-And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
+And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed"sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
 
-Well, if it only was true stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus)  "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
+Well, if it only was true stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus) "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
 
 **The best thing is that you can run AudioCraft locally.**
 
@@ -86,6 +86,7 @@ with open(csv_file, 'r', newline='') as file:
         prompt = row[1]
         descriptions.append(prompt)
 ```
+In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick ` %s/ "/"/g` in Vim fixed the issue with in a scope-relevant manner.
 
 ### Using MusicGen
 
@@ -100,23 +101,27 @@ Let's look at individual prompt results.
 ***Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.***
 
 <audio controls>
-  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/mp3" />
-</audio>
-
-But with a second pass, you get this result
-
-<audio controls>
-  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder_run2.wav" type="audio/mp3" />
+  <source src="audio/Incorporate retro synthwave aesthetics into the album artwork..wav" type="audio/wav" />
 </audio>
 
 So yeah, with this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again.
 
 ### The bad
 
+**Incorporate retro computer game sounds and bleeps into the composition..wav**
+
+<audio controls>
+  <source src="audio/Incorporate retro computer game sounds and bleeps into the composition..wav" type="audio/wav" />
+</audio>
+
 ### The "What on earth?"-category
 
-**Take inspiration from retro video game music for a nostalgic twist**
+**Emulate the sound of a vintage computer booting up**
+<audio controls>
+  <source src="audio/Emulate the sound of a vintage computer booting up.wav" type="audio/wav" />
+</audio>
 
+**Take inspiration from retro video game music for a nostalgic twist**
 
 ## So how does this benchmark?
 
@@ -180,11 +185,19 @@ But like any true end user, we can't read error messages and instead focus on th
 
 ### Reproducability
 
-The biggest issue is the non-deterministic nature of generative AI models for music. Right now the same prompt leads to two **completely** different outputs: 
+The biggest issue is the non-deterministic nature of generative AI models for music. Right now the same prompt leads to two **completely** different outputs.
 
-See this first attempt, quite a song
+Consider the earlier example:
 
-And then, a second pass with the exact same prompt:
+<audio controls>
+  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/wav" />
+</audio>
+
+But with a second pass, you get this result
+
+<audio controls>
+  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder_2.wav" type="audio/wav" />
+</audio>
 
 ### Control
 
