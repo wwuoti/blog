@@ -1,10 +1,10 @@
 ---
-title:"On generative AI for music"
-category:"Music"
-date:"2023-11-06 12:22"
-desc:"How Audiocraft handles Synthwave"
-thumbnail:"./images/synthwave_ai_generation.png"
-alt:"markdown logo"
+title: "On generative AI for music"
+category: "Music"
+date: "2023-11-06 12:22"
+desc: "How Audiocraft handles Synthwave"
+thumbnail: "./images/synthwave_ai_generation.png"
+alt: "markdown logo"
 ---
 
 <!-- markdownlint-disable line-length -->
@@ -15,11 +15,11 @@ Progression in generative AI has made quite some leaps during the past year. You
 
 Well, progress has been varying. There's [Riffusion](https://github.com/riffusion/riffusion), Stable diffusion trained on song spectrograms. was an interesting approach when it came out. Being based on generative AI for images limits it too much though: the songs have a distinctive sound reminiscent of low bitrate MP3s.
 
-On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers:  Neither the models **or** the training code are public, so open-source communities have made some impressive efforts to try and replicate the results. Like Google's code though, training [OpenMusicLM](https://github.com/zhvng/open-musiclm) would take days on any conventional system, and the complex checkpoints setup doesn't really result in any practical results.
+On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers:  Neither the models **or** the training code are public, so open-source communities, such as [open-musiclm](https://github.com/zhvng/open-musiclm) and [musiclm-pytorch](https://github.com/lucidrains/musiclm-pytorch), have made efforts of varying quality to try replicating the results. Like Google's code though, training OpenMusicLM would take days on any conventional system. The project does offer checkpoints, but they are highly complex to use and expose too much of the internal workings system. Even though the checkpoints setup is complex, doesn't really result in any practical results. So no luck either way.
 
-And then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed"sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
+But then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
 
-Well, if it only was true stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus) "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
+Well, if it only was truly stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus) "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
 
 **The best thing is that you can run AudioCraft locally.**
 
@@ -35,7 +35,7 @@ But first, we need some prompts. And a lot of them. So let's generate them with 
 
 >I have a music-creating AI which creates songs based on prompts. I want to hear 80s inspired retrowave, but need a series of prompts to create the music from. Create me 100 prompts in .csv form for 80s retrowave music.
 
-Funnily enough, GPT-3.5 only gave me 70 prompts. But at least we can paste them to a CSV file:
+Funnily enough, GPT-3.5 only gave me 70 prompts. But that's still more than enough. Let's  paste them to a CSV file:
 
 ```csv
 Prompt
@@ -69,11 +69,11 @@ Prompt
 ...
 ```
 
-Full CSV here (TODO: link to csv)
+Download it here (TODO: link to csv)
 
-To be honest, a lot of these prompts aren't that good, but luckily it doesn't matter that much: In my experience song quality is not really correlated to prompt quality. You might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same prompt.
+To be honest, a lot of the prompts here aren't that good, but luckily it doesn't matter that much: In my experience, song quality is not really correlated to prompt quality. In fact, the song-prompt correlation of MusicGen is very vague at times. You also might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same, making it extra tough to do any kind of prompt-engineering.
 
-Next, we need to parse them:
+To start, we need to parse our prompt CSV file:
 
 ```python
 descriptions = []
@@ -86,7 +86,8 @@ with open(csv_file, 'r', newline='') as file:
         prompt = row[1]
         descriptions.append(prompt)
 ```
-In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick ` %s/ "/"/g` in Vim fixed the issue with in a scope-relevant manner.
+
+In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue with in a scope-relevant manner.
 
 ### Using MusicGen
 
@@ -98,42 +99,83 @@ Let's look at individual prompt results.
 
 ### The good
 
+Some of the songs sound exceptional, especially considering its coming from a generative AI.
+
+I shifted through all the prompt results, here are the best ones:
+
+----
+
 ***Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.***
+
+<audio controls>
+  <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/wav" />
+</audio>
+
+----
+
+### The bad
+
+In some ways music generated by AI mirrors the real world in a painfully accurate way: to find the rare, really good songs, you have to dwell though an unmanageable amount of sub par content. Here's a few examples of that:
+
+
+**Incorporate retro computer game sounds and bleeps into the composition..wav**
+
+<audio controls class=full-width-audio>
+  <source src="audio/Incorporate retro computer game sounds and bleeps into the composition..wav" type="audio/wav" />
+</audio>
+
+----
+
+**Emulate the sound of a vintage computer booting up**
+
+<audio controls>
+  <source src="audio/Emulate the sound of a vintage computer booting up.wav" type="audio/wav" />
+</audio>
+
+----
+
+**Take inspiration from retro video game music for a nostalgic twist**
+
+<audio controls>
+  <source src="audio/Take inspiration from retro video game music for a nostalgic twist..wav" type="audio/wav"/>
+</audio>
+
+----
+
+These songs are not something you'd want to spend too much time listening on.
+
+## So how does this perform?
+
+Didn't exactly think that this would be a realistic question this soon. I've made a my fair share of Synthwave, so let's take a small comparison: compare an MusicGen-generated song to my own.
+
+I had been producing music on a computer for ~4 years and just moved to producing Synthwave. The production is fairly amateurish, but not from a complete novice either. This should make it a reasonable starting point, since there quality won't be amazing (and thus giving AI the fair chance).
+
+To make the comparison even, I'll use take a 30-second clip of my song, the songs have are equal in duration. Also, I'll use ffmpeg to narrow it down, to a mono 128kbps mp3 file.
+
+Have a guess, which 30 second clip is from my song and which comes from MusicGen?
+
+----
+
+### Song 1
 
 <audio controls>
   <source src="audio/Incorporate retro synthwave aesthetics into the album artwork..wav" type="audio/wav" />
 </audio>
 
-So yeah, with this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again.
-
-### The bad
-
-**Incorporate retro computer game sounds and bleeps into the composition..wav**
-
-<audio controls>
-  <source src="audio/Incorporate retro computer game sounds and bleeps into the composition..wav" type="audio/wav" />
-</audio>
-
-### The "What on earth?"-category
-
-**Emulate the sound of a vintage computer booting up**
-<audio controls>
-  <source src="audio/Emulate the sound of a vintage computer booting up.wav" type="audio/wav" />
-</audio>
-
-**Take inspiration from retro video game music for a nostalgic twist**
-
-## So how does this benchmark?
-
-I can't believe I'm even considering this question. I've made a my fair share of Synthwave, so let's take a small comparison. I had been producing music on a computer for ~4 years and just moved to producing Synthwave. The production is fairly amateurish, but not from a complete novice either.
-
-Also, I'll use a mono version of my song to balance the comparison against MusicGen. Have a guess, which 30 second clip is from my song and which comes from MusicGen?
-
-### Song 1
+----
 
 ### Song 2
 
+
+<audio controls>
+  <source src="audio/ai_music_compare.mp3" type="audio/wav" />
+</audio>
+
 ----
+
+**The answer**: song 1 is MusicGen and song 2 is me. From a sound quality perspective, the two are closer than I initially expected. The dead giveaway is the unnatural rhythm in song 1, which could of course be made by a human, but compared to song 2 it's very apparent.
+
+However, some of the elements in song 1 are much better than the elements in my song. I particularly enjoy the drums on song 1. The reason for this?
 
 ## Local installation
 
@@ -183,7 +225,7 @@ But like any true end user, we can't read error messages and instead focus on th
 
 ## Issues
 
-### Reproducability
+### Reproducibility
 
 The biggest issue is the non-deterministic nature of generative AI models for music. Right now the same prompt leads to two **completely** different outputs.
 
@@ -199,9 +241,13 @@ But with a second pass, you get this result
   <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder_2.wav" type="audio/wav" />
 </audio>
 
+So yeah, with this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again.
+
 ### Control
 
-Music needs a lot of fine control, and text prompts just aren't good enough interfaces.
+Music needs a lot of fine control, and text prompts just aren't good enough interfaces. This is the same problem as with other generative AI tools (TODO: why?). However, music is harder to describe by just using words, so as long as the models use text as their primary input source, advances will be limited.
+
+Another issue is that songs are first and foremost massive layers of tracks. Without the ability to tweak individual instruments/tracks inside a song.
 
 ## Future
 
