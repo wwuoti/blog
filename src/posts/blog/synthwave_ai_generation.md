@@ -13,19 +13,68 @@ alt: "markdown logo"
 
 Progression in generative AI has made quite some leaps during the past year. You've seen the image generation, conversing chat AIs and vastly improved speech modification AIs. But what about generative AIs for music?
 
-Well, progress has been varying. There's [Riffusion](https://github.com/riffusion/riffusion), Stable diffusion trained on song spectrograms. was an interesting approach when it came out. Being based on generative AI for images limits it too much though: the songs have a distinctive sound reminiscent of low bitrate MP3s.
+Well, progress has been varying. There's [Riffusion](https://github.com/riffusion/riffusion), which is based on Stable diffusion trained on song spectrograms. Riffusion was the first major attempt at image generation with prompts. Being based on generative AI for images limits it too much though: the songs have a distinctive sound reminiscent of low bitrate MP3s.
 
 On the other hand, [MusicLM](https://google-research.github.io/seanet/musiclm/examples/) is also available, but really only in Google's research papers:  Neither the models **or** the training code are public, so open-source communities, such as [open-musiclm](https://github.com/zhvng/open-musiclm) and [musiclm-pytorch](https://github.com/lucidrains/musiclm-pytorch), have made efforts of varying quality to try replicating the results. Like Google's code though, training OpenMusicLM would take days on any conventional system. The project does offer checkpoints, but they are highly complex to use and expose too much of the internal workings system. Even though the checkpoints setup is complex, doesn't really result in any practical results. So no luck either way.
 
 But then there's Meta's [AudioCraft](https://github.com/facebookresearch/audiocraft), or more precisely the [MusicGen](https://github.com/facebookresearch/audiocraft/blob/main/docs/MUSICGEN.md) part of it. Just like people thought that GPT-4 showed "sparks of AGI", MusicGen shows some sparks of AI-created music becoming a serious reality.
 
-Well, if it only was truly stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus) "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo.
+Well, if it only was truly stereo. Right now it's mono-only, and although there are [forks which contain](https://github.com/GrandaddyShmax/audiocraft_plus) "stereo" audio generation, it's more akin to applying regular DSP effects to widen a mono signal to stereo than true stereo. All in all, the results won't be something you'd like to actually listen all the time, but for a demo it's really impressive.
 
 **The best thing is that you can run AudioCraft locally.**
 
 None of the models (Riffusion, MusicLM, MusicGen) really support vocals, so let's focus on creating instrumental music. All we need now is a genre to evaluate? I'll pick [Synthwave/Retrowave](https://en.wikipedia.org/wiki/Synthwave), since it has relatively static compositions.
 
+**NOTE: if you want to see results, skip to the 'Results' section**
+
 ----
+
+## Local installation
+
+To get started, first clone the AudioCraft repository somewhere:
+
+```bash
+git clone https://github.com/facebookresearch/audiocraft.git
+```
+
+Next, ensure you have a new, clean virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+**NOTE: If you have an AMD GPU, install ROCm-versions of pytorch:**
+
+```bash
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2
+```
+
+Install the repository as a symlinked module:
+
+```bash
+pip install -e .
+```
+
+Get the full Python script shown earlier from here (TODO: github gist).
+
+Now running the script should start the process:
+
+```bash
+python test.py --csv_file prompts.csv --song_length 30
+```
+
+To my surprise, MusiGgen works just fine even though [xFormers does not support ROCm](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3949). This is also the reason you'll get the error message when running the script on an AMD GPU:
+
+> WARNING[XFORMERS]: xFormers can't load C++/CUDA extensions. xFormers was built for:
+>   PyTorch 2.0.1+cu118 with CUDA 1108 (you have 2.0.1+rocm5.4.2)
+>   Python  3.10.13 (you have 3.10.12)
+> Please reinstall xformers (see https://github.com/facebookresearch/xformers#installing-xformers)
+> Memory-efficient attention, SwiGLU, sparse and more won't be available.
+> Set XFORMERS_MORE_DETAILS=1 for more details
+
+But like any true end user, we can't read error messages and instead focus on the output whether or not we get something out of the program.
+
 
 ## Prompting
 
@@ -73,6 +122,8 @@ Download it here (TODO: link to csv)
 
 To be honest, a lot of the prompts here aren't that good, but luckily it doesn't matter that much: In my experience, song quality is not really correlated to prompt quality. In fact, the song-prompt correlation of MusicGen is very vague at times. You also might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same, making it extra tough to do any kind of prompt-engineering.
 
+### Using MusicGen
+
 To start, we need to parse our prompt CSV file:
 
 ```python
@@ -87,21 +138,20 @@ with open(csv_file, 'r', newline='') as file:
         descriptions.append(prompt)
 ```
 
-In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue with in a scope-relevant manner.
+In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue in a scope-appropriate manner.
 
-### Using MusicGen
 
 For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium). This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs.
 
 ## Results
 
-Let's look at individual prompt results.
+Let's look at how the prompts sound. I won't cover all the prompts, but instead cherry-pick the best examples and the worst examples. MusicGen is not yet very consistent after all.
 
 ### The good
 
-Some of the songs sound exceptional, especially considering its coming from a generative AI.
+Some of the songs sound exceptional, especially considering its coming from a generative AI. Shifting through the material I'm constantly reminded how accurately generative AI mirrors the real world: to find the rare, really good songs, you have to dwell though an unmanageable amount of sub par content.
 
-I shifted through all the prompt results, here are the best ones:
+The best track to come out of this run is definitely this:
 
 ----
 
@@ -115,7 +165,7 @@ I shifted through all the prompt results, here are the best ones:
 
 ### The bad
 
-In some ways music generated by AI mirrors the real world in a painfully accurate way: to find the rare, really good songs, you have to dwell though an unmanageable amount of sub par content. Here's a few examples of that:
+Here's a few examples of that:
 
 
 **Incorporate retro computer game sounds and bleeps into the composition..wav**
@@ -176,52 +226,6 @@ Have a guess, which 30 second clip is from my song and which comes from MusicGen
 **The answer**: song 1 is MusicGen and song 2 is me. From a sound quality perspective, the two are closer than I initially expected. The dead giveaway is the unnatural rhythm in song 1, which could of course be made by a human, but compared to song 2 it's very apparent.
 
 However, some of the elements in song 1 are much better than the elements in my song. I particularly enjoy the drums on song 1. The reason for this?
-
-## Local installation
-
-You want to try this out as well? To get started, first clone the AudioCraft repository somewhere:
-
-```bash
-git clone https://github.com/facebookresearch/audiocraft.git
-```
-
-Next, ensure you have a new, clean virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-**NOTE: If you have an AMD GPU, install ROCm-versions of pytorch:**
-
-```bash
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2
-```
-
-Install the repository as a symlinked module:
-
-```bash
-pip install -e .
-```
-
-Get the full Python script shown earlier from here (TODO: github gist).
-
-Now running the script should start the process:
-
-```bash
-python test.py --csv_file prompts.csv --song_length 30
-```
-
-To my surprise, MusiGgen works just fine even though [xFormers does not support ROCm](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3949). This is also the reason you'll get the error message when running the script on an AMD GPU:
-
-> WARNING[XFORMERS]: xFormers can't load C++/CUDA extensions. xFormers was built for:
->   PyTorch 2.0.1+cu118 with CUDA 1108 (you have 2.0.1+rocm5.4.2)
->   Python  3.10.13 (you have 3.10.12)
-> Please reinstall xformers (see https://github.com/facebookresearch/xformers#installing-xformers)
-> Memory-efficient attention, SwiGLU, sparse and more won't be available.
-> Set XFORMERS_MORE_DETAILS=1 for more details
-
-But like any true end user, we can't read error messages and instead focus on the output whether or not we get something out of the program.
 
 ## Issues
 
