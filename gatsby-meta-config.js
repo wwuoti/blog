@@ -18,7 +18,7 @@
 /** @type {MetaConfig} */
 const metaConfig = {
   title: "Elias Wuoti",
-  description: "Elias Wuoti's Blog",
+  description: "Hi there. I'm Elias Wuoti. I Blog on DevOps, technology and music.",
   author: "Elias Wuoti",
   siteUrl: "https://wwuoti.github.io/",
   lang: "en",

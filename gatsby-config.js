@@ -13,7 +13,7 @@ const siteMetadata = {
   menuLinks: [
     {
       link: "/",
-      name: "Home",
+      name: "Blog",
     },
     {
       link: "/about/",

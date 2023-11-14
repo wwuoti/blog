@@ -53,7 +53,7 @@ const Home = ({
 
   return (
     <Layout>
-      <SEO title="Home" />
+      <SEO title="Blog" />
       <Main>
         <Content>
           <CategoryFilter categoryList={data.allMarkdownRemark.group} />
