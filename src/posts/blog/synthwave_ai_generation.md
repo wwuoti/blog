@@ -71,7 +71,7 @@ But like any true end user, we can't read error messages and instead focus on th
 
 Since I'm running this locally on my own PC, I'm only constrained by GPU memory, patience and my electricity bill. As long as I have a long enough list of prompts, I can leave my PC running and return to multiple albums (although with very short songs) worth of music.
 
-But first, we need some prompts. And a lot of them. So let's generate them with ChatGpt:
+But first, we need some prompts. And a lot of them. So let's generate them with ChatGPT:
 
 >I have a music-creating AI which creates songs based on prompts. I want to hear 80s inspired retrowave, but need a series of prompts to create the music from. Create me 100 prompts in .csv form for 80s retrowave music.
 
@@ -109,9 +109,11 @@ Prompt
 ...
 ```
 
-**NOTE: download [prompts.csv here](https://gist.github.com/wwuoti/1d402a3dd3a4f4d168d90bc564948100).**
+**(Download [prompts.csv here](https://gist.github.com/wwuoti/1d402a3dd3a4f4d168d90bc564948100))**
 
-To be honest, a lot of the prompts here aren't that good, but luckily it doesn't matter that much: In my experience, song quality is not really correlated to prompt quality. In fact, the song-prompt correlation of MusicGen is very vague at times. You also might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same, making it extra tough to do any kind of prompt-engineering.
+To be honest, a lot of the prompts here aren't that good, but luckily it doesn't matter that much: In my experience, song quality is not really correlated to prompt quality.
+
+In fact, the song-prompt correlation of MusicGen is very vague at times. You also might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same, making it extra tough to do any kind of prompt-engineering.
 
 ### Using MusicGen
 
@@ -129,7 +131,7 @@ with open(csv_file, 'r', newline='') as file:
         descriptions.append(prompt)
 ```
 
-In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue in a scope-appropriate manner.
+Funnily enough, for some reason ChatGPT refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue in a scope-appropriate manner.
 
 For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium).  This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs.
 
@@ -236,8 +238,6 @@ The song has this very serious mood on one end, and completely mad at one end. W
 
 There's not much here that would remind me of retro video games. Well except a little bit of flute here and there, but outside of that it doesn't really conform to the prompt. To make matters worse, on the breakdown part (~0:25) of the song, there's some distorted, screech like elements, giving some horror-movie vibes on an otherwise positive and happy song.
 
-----
-
 All in all, these songs are not something you'd want to spend too much time listening on.
 
 ## How does it perform against real songs?
@@ -271,11 +271,15 @@ Have a guess, which 30 second clip is from my song and which comes from MusicGen
 
 **The answer**: song 1 is MusicGen and song 2 is me. From a sound quality perspective, the two are closer than I initially expected. The dead giveaway is the unnatural rhythm in song 1, which could of course be made by a human, but compared to song 2 it's very apparent.
 
-However, some of the elements in song 1 are much better than the elements in my song. I particularly enjoy the drums on song 1. The reason for this?
+However, some of the elements in song 1 are much better than the elements in my song. I particularly enjoy the drums on song 1.
+
+The reason for this? Presumably, AudioCraft is trained on a lot of music, and the absolute worst, bottom-of-the-barrel content might have not gotten into the training cycle. Instead, some more polished examples were chosen, resulting in better production quality than an amateur might achieve in several years.
+
+That's quite something.
 
 ## Issues
 
-AudioCraft does have its share of issues, but against all odds, all of them are related to the actual content and not to the platform/deployment engineering aspect of it. Considering other AI projects, that's still quite a remarkable achievement.
+AudioCraft does have its share of issues, but against all odds, all of them are related to the actual content and not to the platform/deployment engineering aspect of it. Considering other AI projects I've tried to deploy on my own machine, that's quite a remarkable achievement.
 
 ### Reproducibility
 
@@ -293,7 +297,7 @@ But with a second pass, you get this result
   <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder_2.wav" type="audio/wav" />
 </audio>
 
-So yeah, with this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again.
+With this in mind you could likely do with a lot less prompts too, but just rerun the audio generation over and over again. Well, maybe some other time.
 
 ### Control
 
@@ -309,17 +313,21 @@ The interesting bit is that in terms of production quality, MusicGen's output is
 
 Another thing to note is the variety of genres it can produce. Typically producers are only good at specific niches, but MusicGen can produce practically anything (although with no vocals).
 
+### AI is no Mozart (yet)
+
 The problem is still the details in the composition. It sort of suffers from the same issue as most amateur musicians: the composition itself is not interesting enough. This might limit the impact of music AI for a longer period, since people will associate AI-created music being extremely mediocre and boring.
 
-So how would you measure the composition quality? Well, current AI can't act as a music critique, so the closest thing is our own intuition. Or maybe a real music critic.
+So how would you measure the composition quality? Well, current AI can't act as a music critique, so the closest thing is our own intuition. Or maybe a real music critic. Imagine the song played live by an orchestra. Or a small band at your local venue. Would you consider it good? Likely not.
 
-Imagine the song played live by an orchestra. Or a small band at your local venue. Would you consider it good?
+### But AI could replace your producer
 
-But the opposite is where things start getting more interested: what happens when you can feed a draft of your song to the AI? Even right now MusicGen can take melodies as input and create a song based on that melody. It can even create the song in a completely different genre and make it sound like the melody was intended exactly for that specific genre.
+But the opposite is where things start getting more interested: Let's assume that you're a great composer, but a not that good with computers. What happens when you can feed a draft of your song to the AI? Even right now MusicGen can take melodies as input and create a song based on that melody. It can even create the song in a completely different genre and make it sound like the melody was intended exactly for that specific genre.
 
-While genre-hopping is all and nice, the real impact will come when you can feed complete songs to AI, and it will improve the song, but not change it. There's a huge amount of processing and effort dedicated to the various stages of improving compositions, from sound design to mixing and finally mastering.
+While genre-hopping is all and nice, the real impact will come when you can feed complete songs to AI, and it will improve the song, but not change it. There's a huge amount of processing and effort dedicated to the various stages of production, from sound design to mixing and finally mastering. These take thousands of hours to get skilled at.
 
-This will also spark some big legal issues, since a lot of professionals mixing and mastering engineers have almost trademark-like sounds that they apply to their projects. Once AI is trained on their material and can transform amateur songs into professional, radio-ready hits, we'll start seeings some **real** disruption.
+### Some might not like it
+
+This will likely spark some big legal issues, since a lot of professionals mixing and mastering engineers have almost trademark-like sounds that they apply to their projects. Once AI is trained on their material and can transform amateur songs into professional, radio-ready hits, we'll start seeings some **real** disruption.
 
 Just like with Spotify, there's no way record labels will be happy with the change. But unlike Spotify, they can't just purchase a stake in AI. And that's going to be a problem. And a story for another time.
 
