@@ -20,7 +20,7 @@ const metaConfig = {
   title: "Elias Wuoti",
   description: "Hi there. I'm Elias Wuoti. I Blog on DevOps, technology and music.",
   author: "Elias Wuoti",
-  siteUrl: "https://wwuoti.github.io/",
+  siteUrl: "https://wuoti.com",
   lang: "en",
   utterances: "wwuoti/wwuoti.github.io",
   links: {
