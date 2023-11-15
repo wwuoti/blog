@@ -2,7 +2,7 @@
 title: "On generative AI for music"
 category: "Music"
 date: "2023-11-06 12:22"
-desc: "How Audiocraft handles Synthwave"
+desc: "How AudioCraft handles Synthwave"
 thumbnail: "./images/synthwave_ai_generation.png"
 alt: "markdown logo"
 ---
@@ -56,14 +56,6 @@ Install the repository as a symlinked module:
 pip install -e .
 ```
 
-Get the full Python script shown earlier from here (TODO: github gist).
-
-Now running the script should start the process:
-
-```bash
-python test.py --csv_file prompts.csv --song_length 30
-```
-
 To my surprise, MusiGgen works just fine even though [xFormers does not support ROCm](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/3949). This is also the reason you'll get the error message when running the script on an AMD GPU:
 
 > WARNING[XFORMERS]: xFormers can't load C++/CUDA extensions. xFormers was built for:
@@ -74,7 +66,6 @@ To my surprise, MusiGgen works just fine even though [xFormers does not support 
 > Set XFORMERS_MORE_DETAILS=1 for more details
 
 But like any true end user, we can't read error messages and instead focus on the output whether or not we get something out of the program.
-
 
 ## Prompting
 
@@ -118,7 +109,7 @@ Prompt
 ...
 ```
 
-Download it here (TODO: link to csv)
+**NOTE: download [prompts.csv here](https://gist.github.com/wwuoti/1d402a3dd3a4f4d168d90bc564948100).**
 
 To be honest, a lot of the prompts here aren't that good, but luckily it doesn't matter that much: In my experience, song quality is not really correlated to prompt quality. In fact, the song-prompt correlation of MusicGen is very vague at times. You also might get some hot garbage with a reasonable prompt. The worse part is that you can get two completely different results with the same, making it extra tough to do any kind of prompt-engineering.
 
@@ -140,8 +131,50 @@ with open(csv_file, 'r', newline='') as file:
 
 In fact, for some reason ChatGpt refused to remove the space between the comma and the prompt, giving me some `TypeError: "delimiter" must be a 1-character string`-headaches. A quick `%s/ "/"/g` in Vim fixed the issue in a scope-appropriate manner.
 
+For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium).  This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs.
 
-For this, I'm using [MusicGen's medium-size model](https://huggingface.co/facebook/musicgen-medium). This is the sweet spot for local generation, where with a 16 Gb GPU you can still generate ~30 seconds songs.
+**NOTE: when using AudioCraft from Python, the model will be automatically downloaded.**
+
+Now for running the model against the prompts, we simply need to iterate the names in the `.csv` file, make a folder for the result files and give those to AudiCraft:
+
+```python
+# Load medium-size model
+model = MusicGen.get_pretrained('facebook/musicgen-medium')
+model.set_generation_params(duration=duration)
+
+folder_path = csv_file.split(".")[0]
+
+# Create the folder if it doesn't already exist
+folder = Path(folder_path)
+if not folder.is_dir():
+    folder.mkdir(parents=True, exist_ok=True)
+
+for i in range(0, len(descriptions), 3):
+    sliced_desc = descriptions[i:i+3]
+
+    wav = model.generate(sliced_desc)
+
+    for idx, one_wav in enumerate(wav):
+        # Will save under {idx}.wav, with loudness normalization at -14 db LUFS.
+        prompt = sliced_desc[idx]
+        print(f"Rendering prompt {prompt}")
+        audio_write(f'{folder_path}/{prompt}', one_wav.cpu(), model.sample_rate, strategy="loudness", loudness_compressor=True)
+```
+
+**The full Python script [is available here](https://gist.github.com/wwuoti/f9d91dffafb41a163c4ffd1016b83a1a).** Move the script and `prompts.csv` to your AudioCraft folder and run
+
+```bash
+python test_audiocraft.py --csv_file  `prompts.csv` --song_length 30
+```
+
+The output should then show:
+
+```
+```
+
+with the resulting files now located in `prompts/<prompt_name>.wav` in the AudioCraft folder.
+
+**If you get out-of-memory errors, decrease the song length!** There's a large chance that if you don't have enough GPU memory, generating too long songs will crash.
 
 ## Results
 
@@ -160,19 +193,24 @@ The best track to come out of this run is definitely this:
 <audio controls>
   <source src="audio/Channel the spirit of iconic retrowave artists like Kavinsky and Mitch Murder.wav" type="audio/wav" />
 </audio>
+<br></br>
+
+It **almost** sounds like a real song, and it could even pass ass menu music in some video game. Or even a short clip of a soundtrack. This is one of the only songs I really enjoy listening from a list of 100 prompts.
 
 ----
 
 ### The bad
 
-Here's a few examples of that:
-
+Not every song is produced by AudioCraft is as good as the best one. Here's a few examples of that:
 
 **Incorporate retro computer game sounds and bleeps into the composition..wav**
 
 <audio controls class=full-width-audio>
   <source src="audio/Incorporate retro computer game sounds and bleeps into the composition..wav" type="audio/wav" />
 </audio>
+<br></br>
+
+Now you could argue that it's the prompt, but honestly it should not be this bad. Bleeps and bloops are a standard feature of chiptune, and there's already Synthwave artists merging the two genres, like [LukHash](https://www.youtube.com/@lukhash).
 
 ----
 
@@ -180,7 +218,12 @@ Here's a few examples of that:
 
 <audio controls>
   <source src="audio/Emulate the sound of a vintage computer booting up.wav" type="audio/wav" />
-</audio>
+</audio>  
+<br></br>
+
+This is even worse. Or depends on your musical taste really: if you enjoy noise music, maybe this sounds better to you than the other results. But even with that, there's some wacky-ass Mario Kart boogie going on as well, which makes the song hard to relate to.
+
+The song has this very serious mood on one end, and completely mad at one end. With this in mind, I could see it being used in some comedic purpose. Not sure where though.
 
 ----
 
@@ -189,12 +232,15 @@ Here's a few examples of that:
 <audio controls>
   <source src="audio/Take inspiration from retro video game music for a nostalgic twist..wav" type="audio/wav"/>
 </audio>
+<br></br>
+
+There's not much here that would remind me of retro video games. Well except a little bit of flute here and there, but outside of that it doesn't really conform to the prompt. To make matters worse, on the breakdown part (~0:25) of the song, there's some distorted, screech like elements, giving some horror-movie vibes on an otherwise positive and happy song.
 
 ----
 
-These songs are not something you'd want to spend too much time listening on.
+All in all, these songs are not something you'd want to spend too much time listening on.
 
-## So how does this perform?
+## How does it perform against real songs?
 
 Didn't exactly think that this would be a realistic question this soon. I've made a my fair share of Synthwave, so let's take a small comparison: compare an MusicGen-generated song to my own.
 
@@ -229,6 +275,8 @@ However, some of the elements in song 1 are much better than the elements in my 
 
 ## Issues
 
+AudioCraft does have its share of issues, but against all odds, all of them are related to the actual content and not to the platform/deployment engineering aspect of it. Considering other AI projects, that's still quite a remarkable achievement.
+
 ### Reproducibility
 
 The biggest issue is the non-deterministic nature of generative AI models for music. Right now the same prompt leads to two **completely** different outputs.
@@ -249,25 +297,29 @@ So yeah, with this in mind you could likely do with a lot less prompts too, but 
 
 ### Control
 
-Music needs a lot of fine control, and text prompts just aren't good enough interfaces. This is the same problem as with other generative AI tools (TODO: why?). However, music is harder to describe by just using words, so as long as the models use text as their primary input source, advances will be limited.
+Music needs a lot of fine control, and text prompts just aren't good enough interfaces. This is the same problem as with other generative AI tools. However, music is arguably even harder to describe by just using words, so as long as the models use text as their primary input source, advances will be limited.
 
 Another issue is that songs are first and foremost massive layers of tracks. Without the ability to tweak individual instruments/tracks inside a song.
 
 ## Future
 
-This is the part where the boring evaluation ends and wild speculation starts.
+This is where boring evaluation ends and wild speculation starts. One thing which these models focus (perhaps) too much on is generating music just from a text prompt. Or simple melodies.
 
-One thing which these models focus (perhaps) too much on is generating music just from a text prompt. Or simple melodies.
+The interesting bit is that in terms of production quality, MusicGen's output is actually pretty nice. I would argue that it would takes several years for a complete beginner to get this far in terms of production. And once this gets more and more widespread
 
-The interesting bit is that in terms of production quality, MusicGen's output is actually pretty nice. I would argue that it would takes several years for a complete beginner to get this far in terms of production.
+Another thing to note is the variety of genres it can produce. Typically producers are only good at specific niches, but MusicGen can produce practically anything (although with no vocals).
 
-At least when you start factoring in the variety of genres it can produce.
-
-But the problem is still the details in the composition. It sort of suffers from the same issue as most: the composition itself is not interesting enough.
+The problem is still the details in the composition. It sort of suffers from the same issue as most amateur musicians: the composition itself is not interesting enough. This might limit the impact of music AI for a longer period, since people will associate AI-created music being extremely mediocre and boring.
 
 So how would you measure the composition quality? Well, current AI can't act as a music critique, so the closest thing is our own intuition. Or maybe a real music critic.
 
 Imagine the song played live by an orchestra. Or a small band at your local venue. Would you consider it good?
 
-But the opposite is where things start getting more interested: what happens when you can feed a draft of your song to the AI?
+But the opposite is where things start getting more interested: what happens when you can feed a draft of your song to the AI? Even right now MusicGen can take melodies as input and create a song based on that melody. It can even create the song in a completely different genre and make it sound like the melody was intended exactly for that specific genre.
+
+While genre-hopping is all and nice, the real impact will come when you can feed complete songs to AI, and it will improve the song, but not change it. There's a huge amount of processing and effort dedicated to the various stages of improving compositions, from sound design to mixing and finally mastering.
+
+This will also spark some big legal issues, since a lot of professionals mixing and mastering engineers have almost trademark-like sounds that they apply to their projects. Once AI is trained on their material and can transform amateur songs into professional, radio-ready hits, we'll start seeings some **real** disruption.
+
+Just like with Spotify, there's no way record labels will be happy with the change. But unlike Spotify, they can't just purchase a stake in AI. And that's going to be a problem. And a story for another time.
 
