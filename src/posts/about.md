@@ -10,4 +10,4 @@ I have a few projects at [GitLab](https://gitlab.com/Wwuoti/) as well.
 
 ## Contact
 
-If you promise not a spam bot, please reach me at [blog.wuoti@proton.me](mailto:blog.wuoti@proton.me).
+If you promise you're not a spam bot, please reach me at [blog.wuoti@proton.me](mailto:blog.wuoti@proton.me).
