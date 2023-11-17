@@ -9,6 +9,8 @@ alt: "markdown logo"
 
 <!-- markdownlint-disable line-length -->
 
+## Why overclock monitor?
+
 For the longest time of LCDs, most computer monitors have had their refresh rates capped at 60 Hz, even though they could do some more. How much more, well it depends on your display. ~10 years before, it was really rare to see IPS screens with high refresh rates. But there were options: either buy shady Korean IPS panels (TODO: forum), pray that your customs agent lets them through. OR get a monitor where the manufacturer left a little headroom, either intentionally or not.
 
 One such monitor was Asus' VG23AH, a 23-inch 1080p. As was the hype with early 2010s, it also "supported" passive 3d. Because of course it did. While the display only supported 60 Hz out of the box, the display **could** be overclocked up to 76 Hz, a **whopping** 27% increase!
@@ -25,13 +27,13 @@ Display manufacturers specify various information on their displays to the EDID.
 
 First, check info on your current display:
 
-```
+```bash
 $ xrandr -q
 ```
 
 Next, use the [video timings calculator](https://tomverbeure.github.io/video_timings_calculator) to calculate a modeline for your display.
 
-In this case, we're going with a 1920 by 1080 72 Hz resolution. For that we get the following resolution: 
+In this case, we're going with a 1920 by 1080 72 Hz resolution. For that we get the following resolution:
 
 ```unix
 Modeline        "1920x1080_71.91" 210.25 1920 2056 2256 2592 1080 1083 1088 1128 -HSync +VSync 
@@ -55,17 +57,21 @@ xrandr --output VGA-1 --mode 1600x1200_60.00
 
 The usefulness of [video timings calculator](https://tomverbeure.github.io/video_timings_calculator) detailed descriptions come into play now: the VG23AH has a peculiar problem where 76Hz is supported only on DVI. You can use the chart on the site to look at different input types, and then check whether or not the bandwidth requires is supported by the ocnnector.
 
-In the case of the relatively antiquated VG23AH, the monitor should support 76 Hz via HDMI as well, as it does support HDMI 1.4. So bear in mind that it might not be a complete list. This is a problem I remember facing a long time back when creating custom resolutions on Windows too, so it might be that there's something more related to the HDMI port on this monitor that's left unspecified. In any case, 72 Hz is what we'll have to do.
+In the case of the relatively antiquated VG23AH, the monitor should support 76 Hz via HDMI as well, as it does support HDMI 1.4. So bear in mind that it might not be a complete list. This is a problem I remember facing a long time back when creating custom resolutions on Windows too. So it might be that there's something more related to the HDMI port on this monitor that's left unspecified.
 
+In any case, 72 Hz is what we'll have to do with this time.
+
+
+## X config
+
+Check if you already have `/etc/X11/xorg.conf`. If not, create it.
+
+TODO: explain HorizSync and VertRefresh!
 
 In the `device` section, ensure you have this:
 
 ```unix
 Section "Monitor"
-    # HorizSync source: edid, VertRefresh source: edid
-    Identifier     "Monitor0"
-    VendorName     "Unknown"
-    ModelName      "Ancor Communications Inc ASUS VG23A"
     HorizSync       28.0 - 83.0
     VertRefresh     50.0 - 85.0
     Option         "DPMS"
