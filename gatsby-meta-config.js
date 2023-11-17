@@ -26,7 +26,7 @@ const metaConfig = {
   links: {
     github: "https://github.com/wwuoti/wwuoti.github.io",
   },
-  favicon: "src/images/logo.png",
+  favicon: "src/images/logo.svg",
 }
 
 // eslint-disable-next-line no-undef
