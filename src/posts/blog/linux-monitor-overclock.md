@@ -55,7 +55,7 @@ After inputting those values to the tool, we get the following modeline:
 Modeline        "1920x1080_71.91" 210.25 1920 2056 2256 2592 1080 1083 1088 1128 -hsync +vsync 
 ```
 
-> NOTE: addition to the regular modeline, you also have 2 other optionns, `CVT-RB` and `CVT-RBv2`. The `RB` stands for Reduced Blanking, which effectively allows you to transfer more data with a lower bandwidth. However, even the regular RB was made part of HDMI 2.0, so you'll need a fairly recent display to take advantage of that.
+> NOTE: addition to the regular modeline, you also have 2 other optionns, `CVT-RB` and `CVT-RBv2`. The `RB` stands for Reduced Blanking, which effectively allows you to transfer more data with a lower bandwidth. However, RB was made part of HDMI 2.0, so you'll need a fairly recent display to take advantage of that. In this case, my VG23AH is out of luck.
 
 [Read more on video modes and modelines here](https://www.improwis.com/tables/video.webt#Videomodesandmodelines)
 
@@ -93,7 +93,7 @@ Now we arrive at the tedious bit, which is modifying your X configuration. Check
 
 #### Ignore manufacturer EDID
 
-To force your custom resolution on Linux, you'll need to ignore the default EDID ([Extended Display Identification Data](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data)) used. Display manufacturers specify various information on their displays inside EDID, 
+To force your custom resolution on Linux, you'll need to ignore the default EDID ([Extended Display Identification Data](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data)) used. Display manufacturers specify various information on their displays inside the EDID, including which refresh rates should be supported by the panel.
 
 If you're using Nvidia proprietary drivers, you can specify: 
 
@@ -104,8 +104,7 @@ Section "Device"
 
 to disable the driver comparing your resolution against the allowed ones in the EDID.
 
-You'll also need to disable some other options, such as maximum pixel clock. You can see in the cu
-
+You'll also need to disable some other options, such as maximum pixel clock. 
 TODO: explain HorizSync and VertRefresh!
 
 In the `device` section, ensure you have this:
@@ -138,13 +137,13 @@ In any case, 72 Hz is what we'll have to do with this time.
 
 ## AMD problems
 
-To be honest, I haven't used the ASUS monitor in many years. Instead, I've had a 32" 4k display, a Lenovo P32u-10. So how about overclocking that one as well?
+To be honest, I haven't used the ASUS monitor in many years. Instead, I've had a 32" 4k display, a Lenovo P32u-10. A few years back I also switched to an AMD GPU.
 
-Well, I couldn't get very far. Using h
+The obvious question is: can I overclock that 4k monitor as well?
 
-So why can't I display further than 68hz?
+Well, yes, to a certain extent.
 
-We can get some more info using an utility called `read-edid `. Run `get edid` as root:
+First, let's look at some info on the Lenovo P32. Using an utility called `read-edid `:
 
 ```bash
 $ sudo get-edid | parse-edid
@@ -173,7 +172,11 @@ The pixel clock here is 603.44, which is above the maximum supported pixel clock
 
 ![video_timings_under_600](images/video_timings_under_600.png)
 
-But what about the `NoEdidMaxPClkCheck,NoMaxPClkCheck` option? Well, turns out that it's a feature only found in Nvidia's proprietary drivers. So with AMD, I'm out of luck.
+But wait, not all has been lost. This display supports reduced blanking, so surely I can try the other modes as well?
+
+Well whad'ya know, using the RB modeline I can get 70 Hz to work. But that's the end.
+
+Hold on a bit, what about the `NoEdidMaxPClkCheck,NoMaxPClkCheck` option described earlier? Well, turns out that it's a feature only found in Nvidia's proprietary drivers. So with AMD, I'm out of luck.
 
 Well not exactly. You **can** take the EDID and edit it. But all the EDID editors are Windows-only. Plus this time I'm not really even sure if the AMD driver allows a higher pixel clock than 600 MHz. But can the display even take higher pixel clocks? Can't say for sure, I'll need to do some more research.
 
