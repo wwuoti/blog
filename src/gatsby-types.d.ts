@@ -800,6 +800,10 @@ type GRVSCCodeBlockFilterInput = {
   readonly tokenizedLines: InputMaybe<GRVSCTokenizedLineFilterListInput>;
 };
 
+type GRVSCCodeBlockFilterListInput = {
+  readonly elemMatch: InputMaybe<GRVSCCodeBlockFilterInput>;
+};
+
 type GRVSCCodeBlockGroupConnection = {
   readonly distinct: ReadonlyArray<Scalars['String']>;
   readonly edges: ReadonlyArray<GRVSCCodeBlockEdge>;
@@ -1957,7 +1961,11 @@ type MarkdownHeadingSortInput = {
 };
 
 type MarkdownRemark = Node & {
+  /** Returns the first child node of type GRVSCCodeBlock or null if there are no children of given type on this node */
+  readonly childGrvscCodeBlock: Maybe<GRVSCCodeBlock>;
   readonly children: ReadonlyArray<Node>;
+  /** Returns all children nodes filtered by type GRVSCCodeBlock */
+  readonly childrenGrvscCodeBlock: Maybe<ReadonlyArray<Maybe<GRVSCCodeBlock>>>;
   readonly excerpt: Maybe<Scalars['String']>;
   readonly excerptAst: Maybe<Scalars['JSON']>;
   readonly fields: Maybe<MarkdownRemarkFields>;
@@ -2049,7 +2057,9 @@ type MarkdownRemarkEdge = {
 };
 
 type MarkdownRemarkFieldSelector = {
+  readonly childGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFieldSelector>;
   readonly children: InputMaybe<NodeFieldSelector>;
+  readonly childrenGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFieldSelector>;
   readonly excerpt: InputMaybe<FieldSelectorEnum>;
   readonly excerptAst: InputMaybe<FieldSelectorEnum>;
   readonly fields: InputMaybe<MarkdownRemarkFieldsFieldSelector>;
@@ -2084,7 +2094,9 @@ type MarkdownRemarkFieldsSortInput = {
 };
 
 type MarkdownRemarkFilterInput = {
+  readonly childGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFilterInput>;
   readonly children: InputMaybe<NodeFilterListInput>;
+  readonly childrenGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFilterListInput>;
   readonly excerpt: InputMaybe<StringQueryOperatorInput>;
   readonly excerptAst: InputMaybe<JSONQueryOperatorInput>;
   readonly fields: InputMaybe<MarkdownRemarkFieldsFilterInput>;
@@ -2192,7 +2204,9 @@ type MarkdownRemarkGroupConnection_sumArgs = {
 };
 
 type MarkdownRemarkSortInput = {
+  readonly childGrvscCodeBlock: InputMaybe<GRVSCCodeBlockSortInput>;
   readonly children: InputMaybe<NodeSortInput>;
+  readonly childrenGrvscCodeBlock: InputMaybe<GRVSCCodeBlockSortInput>;
   readonly excerpt: InputMaybe<SortOrderEnum>;
   readonly excerptAst: InputMaybe<SortOrderEnum>;
   readonly fields: InputMaybe<MarkdownRemarkFieldsSortInput>;
@@ -2576,7 +2590,9 @@ type Query_imageSharpArgs = {
 
 
 type Query_markdownRemarkArgs = {
+  childGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFilterInput>;
   children: InputMaybe<NodeFilterListInput>;
+  childrenGrvscCodeBlock: InputMaybe<GRVSCCodeBlockFilterListInput>;
   excerpt: InputMaybe<StringQueryOperatorInput>;
   excerptAst: InputMaybe<JSONQueryOperatorInput>;
   fields: InputMaybe<MarkdownRemarkFieldsFilterInput>;

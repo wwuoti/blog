@@ -1,8 +1,8 @@
 ---
-title: "Overclocking monitor on Linux"
-category: "Music"
-date: "2023-11-25 12:22"
-desc: "When EDID gives you troubles"
+title: "Overclocking your monitor on Linux"
+category: "Linux"
+date: "2024-01-07 19:26"
+desc: "A little push never hurt anybody"
 thumbnail: "./images/linux_monitor_overclocking.png"
 alt: "markdown logo"
 ---
@@ -13,53 +13,45 @@ alt: "markdown logo"
 
 ## Why overclock your monitor in the first place?
 
-**DISCLAIMER: This can have negative effects on your monitor.**
+Disclaimer: (Your retailer or manufacturer likely won't have a lot of sympathy for broken monitors caused by pushing the pixel clocks and refresh rates too far by bypassing their limitations.)
 
-**These instructions are provided as is, use them at your own risk!**
+For the longest time of LCDs, most computer monitors have had their refresh rates capped at 60 Hz, even though they could do some more. How much more, well it depends on your display. ~10 years before, it was really rare to see IPS screens with high refresh rates. But there were options: either buy [Korean IPS panels](https://www.overclock.net/threads/long-term-reliability-of-korean-ips.1390265/), pray that your customs agent lets them through. OR alternatively get a monitor where the manufacturer left a little headroom, either intentionally or not.
 
-(Your retailer or manufacturer likely won't have a lot of sympathy for broken monitors caused by pushing the pixel clocks and refresh rates too far by bypassing their limitations.)
-
-For the longest time of LCDs, most computer monitors have had their refresh rates capped at 60 Hz, even though they could do some more. How much more, well it depends on your display. ~10 years before, it was really rare to see IPS screens with high refresh rates. But there were options: either buy [Korean IPS panels](https://www.overclock.net/threads/long-term-reliability-of-korean-ips.1390265/), pray that your customs agent lets them through. OR alternatively get a monitor where the manufacturer left a little headroom, either intentionally or not. Which is what I did.
-
-
-#### Obsolete, but not quite antique
-
-One such monitor was Asus' VG23AH, a 23-inch 1080p monitor with a semi-glossy coating. 
-<!--
+One such monitor was Asus' VG23AH, a 23-inch 1080p monitor with a semi-glossy coating, [see forum post here](https://hardforum.com/threads/asus-vg23ah-the-1st-semi-glossy-ips-panel.1701734/). And passive 3D support as well, how early 2010s!
 
 ![asus_vg23_ah](images/asus_vg23_ah.png)
--->
 
-In addition to the interesting coating ([see forum post here](https://hardforum.com/threads/asus-vg23ah-the-1st-semi-glossy-ips-panel.1701734/)), the display could be overclocked up to 76 Hz.
+But the best part was this: despite being an IPS panel, it could be overclocked up to 76 Hz.
 
-There were instructions on how to setup custom resolutions with Nvidia control panel, along with creating a custom monitor driver using PowerStrip (to force games to use those resolutions). But that was on Windows. How to achieve the same on Linux? Well, you'll need to start tweaking your `Xorg.conf` file. Let's take a look.
+Along the forums and YouTube videos, there were instructions on how to setup custom resolutions with Nvidia control panel, along with creating a custom monitor driver using PowerStrip (to force games to use those resolutions). But that was on Windows. How to achieve the same on Linux? Well, you'll need to start tweaking your `Xorg.conf` file. Let's take a look.
 
-## Creating custom resolution
+## Creating a custom resolution
 
 First, check info on your current display:
 
 ```bash
 $ xrandr -q
 ```
-This should give you the name of your monitor detected by X, along with a list of various resolutions. In the case of Asus, we have a very standard 1920x1080 at 60 Hz. Also, a mode for 76 Hz 1080p missing, which is the monitor fooling you. It can do better, but first we'll have to calculate a **modeline**. Modelines contain the information on various timings, which in turn tells the display driver how to refresh the pixels.
+
+This should give you the name of your monitor detected by X, along with a list of various resolutions. In the case of Asus, we have a very standard 1920x1080 at 60 Hz. Also, a mode for 76 Hz 1080p missing, which is the monitor fooling you. It can do better, but first we'll have to calculate a **modeline**. In short, modelines contain the information on various timings, which in turn tells the display driver how to refresh the pixels.
 
 #### Calculate a modeline
 
-To calculate modelines, use the `cvt` tool on the commandline. Or alternatively, use [video timings calculator](https://tomverbeure.github.io/video_timings_calculator) to get more detailed information on the modeline (such as required bandwidth).
+To calculate a modeline, use the `cvt` command line tool. Or alternatively, use [video timings calculator](https://tomverbeure.github.io/video_timings_calculator) to get more detailed information on the modeline (such as required bandwidth).
 
 In this case, we're going with a 1920 by 1080 resolution at 72 Hz.
 
 After inputting those values to the tool, we get the following modeline:
 
-```unix
+```conf
 Modeline        "1920x1080_71.91" 210.25 1920 2056 2256 2592 1080 1083 1088 1128 -hsync +vsync 
 ```
 
 > NOTE: addition to the regular modeline, you also have 2 other optionns, `CVT-RB` and `CVT-RBv2`. The `RB` stands for Reduced Blanking, which effectively allows you to transfer more data with a lower bandwidth. However, RB was made part of HDMI 2.0, so you'll need a fairly recent display to take advantage of that. In this case, my VG23AH is out of luck.
 
-[Read more on video modes and modelines here](https://www.improwis.com/tables/video.webt#Videomodesandmodelines)
+[Read more on video modes and modelines here.](https://www.improwis.com/tables/video.webt#Videomodesandmodelines)
 
-[This is where I got the info on Nvidia driver settings for Linux monitor overclocking](https://www.monitortests.com/forum/Thread-Guide-to-Nvidia-monitor-overclocking-on-Linux)
+[This is where I got the info on Nvidia driver settings for Linux monitor overclocking.](https://www.monitortests.com/forum/Thread-Guide-to-Nvidia-monitor-overclocking-on-Linux)
 
 #### Test your custom resolution
 
@@ -87,7 +79,7 @@ So what to do now? Get your wrench and use a little force. Here's how.
 
 
 
-## Xorg configuration
+## X configuration
 
 Now we arrive at the tedious bit, which is modifying your X configuration. Check if you already have `/etc/X11/xorg.conf`. If not, create it first.
 
@@ -97,7 +89,7 @@ To force your custom resolution on Linux, you'll need to ignore the default EDID
 
 If you're using Nvidia proprietary drivers, you can specify: 
 
-```unix
+```conf
 Section "Device"
     Option      "UseEDIDFreqs"  "false"
 ```
@@ -109,7 +101,7 @@ TODO: explain HorizSync and VertRefresh!
 
 In the `device` section, ensure you have this:
 
-```unix
+```conf
 Section "Monitor"
     HorizSync       28.0 - 83.0
     VertRefresh     50.0 - 85.0
@@ -137,9 +129,9 @@ In any case, 72 Hz is what we'll have to do with this time.
 
 ## AMD problems
 
-To be honest, I haven't used the ASUS monitor in many years. Instead, I've had a 32" 4k display, a Lenovo P32u-10. A few years back I also switched to an AMD GPU.
+To be honest, I haven't used the ASUS monitor in many years. Instead, I've had a 32" 4k monitor, a Lenovo P32u-10. A few years back I also switched to an AMD GPU.
 
-The obvious question is: can I overclock that 4k monitor as well?
+The obvious question is: can I overclock that Lenovo monitor as well?
 
 Well, yes, to a certain extent.
 
@@ -176,27 +168,31 @@ But wait, not all has been lost. This display supports reduced blanking, so sure
 
 Well whad'ya know, using the RB modeline I can get 70 Hz to work. But that's the end.
 
-Hold on a bit, what about the `NoEdidMaxPClkCheck,NoMaxPClkCheck` option described earlier? Well, turns out that it's a feature only found in Nvidia's proprietary drivers. So with AMD, I'm out of luck.
+```bash
+$ xrandr -q
+Screen 0: minimum 320 x 200, current 6400 x 2208, maximum 16384 x 16384
+DisplayPort-0 connected primary 3840x2160+2560+48 (normal left inverted right x axis y axis) 708mm x 399mm
+   3840x2160_70  67.93*+
+```
 
-Well not exactly. You **can** take the EDID and edit it. But all the EDID editors are Windows-only. Plus this time I'm not really even sure if the AMD driver allows a higher pixel clock than 600 MHz. But can the display even take higher pixel clocks? Can't say for sure, I'll need to do some more research.
+But hold on a bit, what about the `NoEdidMaxPClkCheck,NoMaxPClkCheck` option described earlier? Well, turns out that it's a feature only found in Nvidia's proprietary drivers. So with AMD, I'm out of luck.
+
+Well, not exactly. You **can** take the EDID and edit it. But all the EDID editors are Windows-only. Plus this time I'm not really even sure if the AMD driver allows a higher pixel clock than 600 MHz. And even if it did, can the display take higher pixel clocks? Can't say for sure, I'll need to do some more research.
 
 So that remains a story for another time.
 
 ## For reference: VG23AH Xorg configuration
 
-```
+I'm leaving this here, just in case there's anything someone might find interesting.
+
+```conf
 # nvidia-settings: X configuration file generated by nvidia-settings
 # nvidia-settings:  version 455.45.01
 
 Section "ServerLayout"
     Identifier     "Layout0"
     Screen      0  "Screen0" 0 0
-    InputDevice    "Keyboard0" "CoreKeyboard"
-    InputDevice    "Mouse0" "CorePointer"
     Option         "Xinerama" "0"
-EndSection
-
-Section "Files"
 EndSection
 
 Section "Module"
@@ -205,22 +201,6 @@ Section "Module"
     Load           "type1"
     Load           "freetype"
     Load           "glx"
-EndSection
-
-Section "InputDevice"
-    # generated from default
-    Identifier     "Mouse0"
-    Driver         "mouse"
-    Option         "Protocol" "auto"
-    Option         "Device" "/dev/psaux"
-    Option         "Emulate3Buttons" "no"
-    Option         "ZAxisMapping" "4 5"
-EndSection
-
-Section "InputDevice"
-    # generated from default
-    Identifier     "Keyboard0"
-    Driver         "kbd"
 EndSection
 
 Section "Monitor"
