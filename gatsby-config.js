@@ -102,7 +102,14 @@ const markdownPlugins = [
 
 const searchPlugins = [
   "gatsby-plugin-sitemap",
-  "gatsby-plugin-robots-txt",
+  {
+    resolve: "gatsby-plugin-robots-txt",
+    options: {
+      host: '',
+      sitemap: 'https://wuoti.com/sitemap-0.xml',
+      policy: [{userAgent: '*', allow: '/'}],
+    }
+  },
   {
     resolve: `gatsby-plugin-feed`,
     options: {
