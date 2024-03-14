@@ -7,21 +7,28 @@ thumbnail: "./images/synthwave_ai_generation.png"
 alt: "markdown logo"
 ---
 
-You're using an Android device. At some point, you've updated Spotify.
+You're using an Android device. At some point, you've updated Spotify. Maybe you didn't do it explicitly, but updated it is anyway.
 
-## Changelog: fixes and minor improvements
+Suddenly, you see a player notification appear. That's odd, you didn't launch Spotify lately?
 
-> *The user doesn't matter. Only velocity. More features. More!*
-
-This is what it feels like to use modern applications, on the web and on mobile.
-
-And not just that, but A/B testing causes your experience to vary from other people's experience.
+Of course, it's a bug. A rather annoying one.
 
 ## How hard can it be to downgrade?
+The first option is to wait for a fix from Spotify.
 
-But now I'm supposed to use more or less sketchy APK mirroring sites. At least on a desktop, you could verify 
+However, threads like these, it doesn't look to be a high priority.
 
-A better option is to just use Aurora store. There we can manually specify the version to download.
+### Download earlier version
+
+The obvious solution is to return to the last working software version. So let's get downgrading.
+
+Open Play store and just select the older version. Or right, you can't. Fine then, let's use some sketchy APK mirroring sites. But that's not really safe.
+
+There is a better option however: use Aurora store. A 3rd party client for downloading Play Store applications. This way the applications come directly from the original source, so you should be all good on the security.
+
+How am I supposed to find out the last version I had?
+
+Just specify the version to download.
 
 But wait, what's this code supposed to mean? How I'm supposed to find it?
 
@@ -31,12 +38,21 @@ I can't really blame the Aurora developers either. Their product is excellent ot
 
 Well, back to those more-or-less-sketchy APK mirroring sites.
 
-Let's pick a version many months before this appeared, something like May 2023. There.
+Let's pick a version many months before this appeared, something like May 2023. That's my best guess.
 
 `100666950`. 
 
 That's the code. Input it into Aurora store, and then let's go.
 
-Hold on, what? I can't downgrade the application itself? Of course, you first have to uninstall the newer version of the application. It's not like dodwngrading should be easy. Remember, version go up. Never down. Diamond hands or something.
+Hold on, what? I can't downgrade the application itself? Of course, you first have to uninstall the newer version of the application. It's not like downgrading should be easy. Remember, version go up. Never down. Diamond hands or something.
 
 And don't get me started on software designed to expire like milk. What do you mean the version is too old and I have to upgrade? Do you have the new version on your website? What do you mean the Play Store is the only way to get it?
+
+## Changelog: fixes and minor improvements
+
+> *The user doesn't matter. Only velocity. More features. More!*
+
+This is what it feels like to use modern applications, on the web and on mobile.
+
+And not just that, but A/B testing causes your experience to vary from other people's experience.
+
