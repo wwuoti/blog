@@ -13,6 +13,12 @@ Suddenly, you see a player notification appear. That's odd, you didn't launch Sp
 
 Of course, it's a bug. A rather annoying one.
 
+Try to remove it, and witness it appear again.
+
+Start searching the internet for "Can't remove Spotify" notification, and you'll see: Multiple threads referencing the same issue, with no fix in sight.
+
+Seems like this is just how things are supposed to be.
+
 ## How hard can it be to downgrade?
 The first option is to wait for a fix from Spotify.
 
