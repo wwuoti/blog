@@ -1,9 +1,9 @@
 ---
 title: "How to set scheduled parameters in Azure pipelines?"
 category: "DevOps"
-date: "2024-01-07 19:26"
-desc: "A little push never hurt anybody"
-thumbnail: "./images/og-default.png"
+date: "2024-09-05 07:27"
+desc: "How to get both a schedule and parameters to work together"
+thumbnail: "./images/pipelines_blog.png"
 alt: "markdown logo"
 ---
 
@@ -19,7 +19,6 @@ schedules:
 ```
 
 Maybe it's your nightly build, maybe it's used for testing.
-
 
 But you also have parameters in the pipeline:
 
