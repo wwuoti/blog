@@ -35,14 +35,16 @@ Even worse, if the parameter values you want for your scheduled build are inconv
 
 And at some point they *will* forget to change those. And depending on the duration of the pipeline, you've just wasted (quite) many minutes of their time for a non-relevant build.
 
-Example: You have a (boolean) parameter which:
+So how to keep the scheduled version of your pipeline not messing up your current setup? The answer is to break out the best (or worst) part of YAML: template logic.
+
+
+## Example
+
+You have a (boolean) parameter which:
 
 - needs to be disabled when running a manual build
 - needs to be enabled when running a nightly scheduled build
 
-So how to keep the scheduled version of your pipeline not messing up your current setup?
-
-The answer is to break out the best (or worst) part of YAML: template logic.
 
 ```yaml
 - ${{ if or(eq(parameters.enableFeature, true), eq(variables['Build.Reason'], 'Schedule')) }}:
@@ -91,3 +93,6 @@ But when the schedule triggers, you get this:
 ----
 
 And lastly: [crontab.guru](https://crontab.guru/) is rather helpful when setting up a schedule.
+
+Also, the pipeline example is available [here](https://dev.azure.com/eliaswuoti/azdevopstest/_build).
+
