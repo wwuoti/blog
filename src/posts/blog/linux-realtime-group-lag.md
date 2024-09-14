@@ -1,82 +1,53 @@
 ---
-title: "Heavy CPU usage after adding user to realtime group"
+title: "Heavy CPU in Reaper usage after adding user to realtime group"
 category: "Linux"
-date: "2024-01-07 19:26"
-desc: "Timing and scheduler work in mysterious ways"
-thumbnail: "./images/default.jpg"
+date: "2024-09-14 13:00"
+desc: "RT priorities work in mysterious ways"
+#thumbnail: "./images/reaper_profiling/hotspot_perf.png"
+thumbnail: "./images/reaper_profiling/reaper_perf_cover.png"
 alt: "markdown logo"
 ---
 
-# Context
+## Context
 
 I've been using Linxu for audio production for the past 7 years right now. Despite the lack of plugins, things work great.
 
 Well, except for one thing.
 
-My user is not in the audio group. And it's been this way for a long, long time. I had some performance problems to which I didn't bother diagnosing. Leaving my user account without realtime privileges was the 
+I get awful performance if I add my user to the `audio` group. This enables user-level processes to run with real-time  priorities. The privileges are defined in `/etc/security/limits.conf`:
 
-To get started, let's just run 
-
+```shell
+@audio          -       rtprio          95
+@audio          -       memlock         unlimited 
 ```
-# usermod -a -G <usename> audio
-```
 
-and log out and back in. Now everything I run on my machine can access the highest of process priorities. This means that audio should now have a.
+Well that's nice to know, but what about my performance issues? If I just leave my user out of the audio group, I get a relatively smooth UI in Reaper, but whenever I go record something my audio buffering just doesn't keep up, I get crackles on even moderately demanding instrument and effects chains.
 
-Let's boot up Reaper, next. I start playback and immediately notice immense glitching. The playback does not even go through real time. To add insult to injury, the UI has now become unbearably slow.
+Once RT privileges have been enabled, my CPU usages spikes through the roof and the UI becomes hopelessly laggy. So what to do?
 
-This is the same issue as last time. So what exactly happened?
+## Sorry to interrupt you for a moment
 
-# Digging into scheduling
+I'm fortunate enough to have a reasonably powerful laptop with a similar setup. I check there and my user *does* belong to the audio group. CPU priorities also look good, so does overall performance. 
 
-I'm fortunate enough to have a reasonably powerful laptop with a similar setup. I check there and my user *does* belong to the audio group. CPU priorities also look good, so does overall performance. So where to start now?
+Also, I'm using an external USB soundcard on my desktop, which always creates slightly more latency than a laptop's integrated soundcard located directly in the PCI bus.
 
-Ah yes, `/proc/interrupts`. Let's keep an eye on that:
+So where to start now?
+
+Maybe `/proc/interrupts`? I could look at if there's some interrupts overlapping, that would for sure cause performance issues.  Let's keep an eye on that:
+
 
 ```sh
 watch -n 0.1 cat /proc/interrupts
 ```
 
-Here we can see the amount of interrupts done per core and per source.
-
-My CPU has 16 logical cores, each column here (CPU0 to CPU15) corresponds to one of them. In the right hand side of each row, the cause of the interrupt is listed. 
+Here we can see the amount of interrupts done per CPU core and the source of the interrupt.
+My CPU has 16 logical cores, each column here (`CPU0` to `CPU15`) corresponds to one of them. In the right hand side of each row, the cause of the interrupt is listed. 
 
 
 ```bash
 Every 0.1s: cat /proc/interrupts                                                                                                                                                                                                                                                                                                                                   evo: Fri Sep  6 07:17:34 2024
 
             CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       CPU6       CPU7       CPU8       CPU9       CPU10      CPU11      CPU12      CPU13      CPU14      CPU15
-   0:         48          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    2-edge      timer
-   5:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    5-edge      parport0
-   7:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    7-fasteoi   pinctrl_amd
-   8:          0          0          1          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    8-edge      rtc0
-   9:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    9-fasteoi   acpi
-  28:         22          0          1          0          0          0          0          0          0          0          0          0          0          0          0          0  PCI-MSI-0000:00:00.2    0-edge      AMD-Vi
-  29:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:01.1    0-edge      PCIe PME, aerdrv
-  30:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:01.3    0-edge      PCIe PME, aerdrv
-  31:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:03.1    0-edge      PCIe PME, aerdrv
-  32:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:07.1    0-edge      PCIe PME
-  34:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:08.1    0-edge      PCIe PME
-  44:    3644510          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:03:00.1    0-edge      ahci[0000:03:00.1]
-  46:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:27:00.2    0-edge      ahci[0000:27:00.2]
-  48:          0          0          0          6          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:25:00.3    0-edge      0-0008
-  50:          0          0          0          0          0        487          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:27:00.3    0-edge      snd_hda_intel:card1
-  51:          0          0          0          0          0         40          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    0-edge      nvme0q0
-  52:        373          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    1-edge      nvme0q1
-  53:          0        359          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    2-edge      nvme0q2
-  54:          0          0        413          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    3-edge      nvme0q3
-  55:          0          0          0        271          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    4-edge      nvme0q4
-  56:          0          0          0          0        564          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    5-edge      nvme0q5
-  57:          0          0          0          0          0        330          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    6-edge      nvme0q6
-  58:          0          0          0          0          0          0        744          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    7-edge      nvme0q7
-  59:          0          0          0          0          0          0          0        438          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    8-edge      nvme0q8
-  60:          0          0          0          0          0          0          0          0       2201          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    9-edge      nvme0q9
-  61:          0          0          0          0          0          0          0          0          0        437          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   10-edge      nvme0q10
-  62:          0          0          0          0          0          0          0          0          0          0        400          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   11-edge      nvme0q11
-  63:          0          0          0          0          0          0          0          0          0          0          0        519          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   12-edge      nvme0q12
-  64:          0          0          0          0          0          0          0          0          0          0          0          0        671          0          0          0  IR-PCI-MSIX-0000:01:00.0   13-edge      nvme0q13
-  65:          0          0          0          0          0          0          0          0          0          0          0          0          0       1001          0          0  IR-PCI-MSIX-0000:01:00.0   14-edge      nvme0q14
-  66:          0          0          0          0          0          0          0          0          0          0          0          0          0          0        875          0  IR-PCI-MSIX-0000:01:00.0   15-edge      nvme0q15
   67:  248836593          0          0          0          0   11855265          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:03:00.0    0-edge      xhci_hcd
   75:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:22:00.0    0-edge      xhci_hcd
   84:       1843          0          0          0          0         74          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:25:00.2    0-edge      xhci_hcd
@@ -101,57 +72,20 @@ Every 0.1s: cat /proc/interrupts                                                
  DFR:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Deferred Error APIC interrupts
  MCE:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Machine check exceptions
  MCP:        879        853        853        852        852        852        853        853        853        853        854        855        855        855        855        855   Machine check polls
- ERR:          1
- MIS:          0
- PIN:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt notification event
- NPI:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Nested posted-interrupt event
- PIW:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt wakeup event
- PMN:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted MSI notification event
 ```
 
 
-One of the highest sources is `amdgpu`. Well, that's my GPU, so that's expected as well.
+One of the highest sources is `amdgpu`. Well, that's my GPU, so that's expected.
 
-My soundcard is connected via USB, so the source of interrupts for it is `xhci_hcd`. The interrupts caused by it are located in CPU0 and CPU5. So it's not spread really evenly. Even worse, interrupts by `amdgpu` are also mostly located in CPU0, so any audio handling done there is contested by handling graphcis calls.
+The soundcard on my PC is connected via a USB 3.0 port, so the source of interrupts for it is `xhci_hcd` . The interrupts caused by it are located in CPU0 and CPU5. So it's not spread really evenly. Even worse, interrupts by `amdgpu` are also mostly located in CPU0, so any audio handling done there is contested by handling graphcis calls.
 
 
-Testing with irqbalance  --debug gives us the following statistics:
+Let's setup irqbalance to the background and take a look at the results again. `/proc/interrupts` gives us the following statistics:
 
 ```bash
 Every 0.1s: cat /proc/interrupts                                                                                                                                                                                                                                                                                                                                evo: Fri Sep  6 07:43:06 2024
 
             CPU0       CPU1       CPU2       CPU3       CPU4       CPU5       CPU6       CPU7       CPU8       CPU9       CPU10      CPU11      CPU12      CPU13      CPU14      CPU15
-   0:         48          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    2-edge      timer
-   5:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    5-edge      parport0
-   7:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    7-fasteoi   pinctrl_amd
-   8:          0          0          1          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    8-edge      rtc0
-   9:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-IO-APIC    9-fasteoi   acpi
-  28:         22          0          1          0          0          0          0          0          0          0          0          0          0          0          0          0  PCI-MSI-0000:00:00.2    0-edge      AMD-Vi
-  29:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:01.1    0-edge      PCIe PME, aerdrv
-  30:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:01.3    0-edge      PCIe PME, aerdrv
-  31:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:03.1    0-edge      PCIe PME, aerdrv
-  32:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:07.1    0-edge      PCIe PME
-  34:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:00:08.1    0-edge      PCIe PME
-  44:    3646883          0          0          0          0          0          0         98          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:03:00.1    0-edge      ahci[0000:03:00.1]
-  46:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:27:00.2    0-edge      ahci[0000:27:00.2]
-  48:          0          0          0          6          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:25:00.3    0-edge      0-0008
-  50:          0          0          0          0          0        487          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:27:00.3    0-edge      snd_hda_intel:card1
-  51:          0          0          0          0          0         46          0          0          0          0          0          0          0          3          0          0  IR-PCI-MSIX-0000:01:00.0    0-edge      nvme0q0
-  52:       1202          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    1-edge      nvme0q1
-  53:          0       1109          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    2-edge      nvme0q2
-  54:          0          0       1460          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    3-edge      nvme0q3
-  55:          0          0          0       1248          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    4-edge      nvme0q4
-  56:          0          0          0          0       1614          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    5-edge      nvme0q5
-  57:          0          0          0          0          0       1103          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    6-edge      nvme0q6
-  58:          0          0          0          0          0          0       1925          0          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    7-edge      nvme0q7
-  59:          0          0          0          0          0          0          0       1443          0          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    8-edge      nvme0q8
-  60:          0          0          0          0          0          0          0          0       3322          0          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0    9-edge      nvme0q9
-  61:          0          0          0          0          0          0          0          0          0       1545          0          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   10-edge      nvme0q10
-  62:          0          0          0          0          0          0          0          0          0          0       1662          0          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   11-edge      nvme0q11
-  63:          0          0          0          0          0          0          0          0          0          0          0       1748          0          0          0          0  IR-PCI-MSIX-0000:01:00.0   12-edge      nvme0q12
-  64:          0          0          0          0          0          0          0          0          0          0          0          0       1884          0          0          0  IR-PCI-MSIX-0000:01:00.0   13-edge      nvme0q13
-  65:          0          0          0          0          0          0          0          0          0          0          0          0          0       1769          0          0  IR-PCI-MSIX-0000:01:00.0   14-edge      nvme0q14
-  66:          0          0          0          0          0          0          0          0          0          0          0          0          0          0       1951          0  IR-PCI-MSIX-0000:01:00.0   15-edge      nvme0q15
   67:  249945864          0          0          0          0   11855265     445927          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:03:00.0    0-edge      xhci_hcd
   75:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:22:00.0    0-edge      xhci_hcd
   84:       1843          0          0          0          0         74          0          0          0          0          0          0          0          0          0          0  IR-PCI-MSI-0000:25:00.2    0-edge      xhci_hcd
@@ -176,30 +110,34 @@ Every 0.1s: cat /proc/interrupts                                                
  DFR:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Deferred Error APIC interrupts
  MCE:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Machine check exceptions
  MCP:        884        858        858        857        857        857        858        858        858        858        859        860        860        860        860        860   Machine check polls
- ERR:          1
- MIS:          0
- PIN:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt notification event
- NPI:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Nested posted-interrupt event
- PIW:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted-interrupt wakeup event
- PMN:          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0          0   Posted MSI notification event
  ```
 
  Now the interrupts caused by the soundcard are handled on CPU6, while the GPU interrupts are handled in CPU9. So success?
 
+ Not quite. Now audio latency is just fine, but the UI performance is still at a point of being unusable.
 
-### Reaper settings
 
- Interestingly, one thing which I did not take into account is how the audio applications allocate real-time system resources.
+## Never underestimate the user in the dumbness of their configuration
 
- Let's take a look at what options Reaper provides:
+ Interestingly, one thing which I did not take into account is how the audio applications handle their improved rights of allocate real-time system resources. Sometimes they can be configured quite thoroughly. Reaper for instance allows for quite a large amount of options regarding audio buffering.
+
+This is all nice when you know what you're doing, but sometimes you just don't know. And it seems like past me was exactly like that.
+
+Let's take a look at what options Reaper provides:
+
+![](images/reaper_profiling/reaper_very_aggressive.png)
 
 We have `thread priority` set to `highest` and `behavior` set to `15 - very aggressive`. Now that we have realtime enabled, if we let Reaper handle the audio buffering as aggressively as it can, the "other side", or the user interface will be left in the dust.
+
+Changing the behavior back `0-relaxed` has dramatic effects: CPU usage is now basically identical to running without realtime privileges. What's more, when testing  
+
+![](images/reaper_profiling/reaper_audio_buffering)
 
 Same goes for overall CPU usage: when using `15 - very aggressive`, CPU gets to 80% usage while playback is on. However, when dialing it back to automatic, or `0 - relaxed`,  average CPU usage across all
 
 When we have pre-emptive scheduling 
 
-So why does this happen? TODO: find out,
+So why does this happen?
 
 Simply put, it's the audio and UI threads competing for CPU time. The issue here is that when the audio threads get aggressive enough, with pre-emptive scheduling they will kick out any UI thread currently rendering. With this you 
 
@@ -212,17 +150,49 @@ But then I had problems with effects on MIDI input. I would play some notes on a
 Let's think about this live instrument playing a little bit more. In this use case, you listen to the audio and all of your inputs happen on the external MIDI device. You might take a look at the UI a little bit, but I'm at least not using my mouse or keyboard at all. So any time spent refreshing the UI as fast as possible is wasted. But now that the audio threads can't kick out any UI threads from using the CPU, they are forced to wait. And they wait a little too long, finally causing glitches in playback when their requests are not handled in time.
 
 
-### Debugging
+## Performance profiling
 
 To prove my hunch right, let's open some Linux profiling tools.
 
-First, record 30 seconds of profile data, after which build a flamegraph out of it:
+Starting with the simplest, let's open `htop`. The main thing we're interested in are the Reaper's threads and their CPU usages.
+
+![](images/reaper_profiling/htop_reaper.png)
+
+There's multiple threads with negative priorites, which means that they run in realtime. In addition to these the interesting bit is therad `997336`, which has a priority of only `20`, meaning that it's non-realtime. This the thread which renders the UI. If this thread is starved of CPU time, it will show up as the terrible UI lag I described previously.
+
+Now that we know the threads, we can do some profiling on them. Let's record 30 seconds of profiling data with perf.
 
 ```bash
 sudo perf record -F 99 -a -g -- sleep 30
-sudo perf script -f | stackcollapse-perf.pl | flamegraph.pl > perf.svg
 ```
 
-This gives an SVG file which I'll embed below:
-TODO: embed flamegraph here
+During the recording, I'll toggle between two modes of Reaper's audio buffering settings: `0-relaxed` and `15-very aggressive`. 
+
+The run is started with aggressive settings, after which in the middle I switch to the relaxed setting. In the end, I'll switch back to the aggressive setting one last time.
+
+### Visualization
+
+For visualization I'm using [hotspot](https://github.com/KDAB/hotspot), an excellent GUI visualizer for `perf` data.
+
+![perf_data](images/reaper_profiling/hotspot_perf.png)
+
+In the image we have a rough list of Reaper threads and their respective CPU usage. The x-axis illustrates the time elapsed.
+
+The thread `997336` is the UI thread, while the others below it are the audio processing threads. In the visualization, orange means that the thread in question is consuming CPU, while white means that the thread is not consuming CPU.
+
+Zooming in to the left-hand side, you can see how all much orange all the audio threads have.
+
+![](images/reaper_profiling/reaper_perf_cut1.png)
+
+But once we move to the middle, the UI thread starts to get more orange. Here the audio threads start to have more white gaps in them, meaning that they spend less time hogging the CPU, giving the UI thread sufficient time to render the UI.
+
+![](images/reaper_profiling/reaper_perf_cut2.png)
+
+### Lessons learned: configure your things correctly
+
+But why did this matter at all? In an audio production application the only thing which matters is the speed at which it can process the audio, right?
+
+Well, depends on your use cases. You only need your application to handle the current workload, no more, no less. So if you don't get any audio buffering issues, there's no need to force the buffering any further.
+
+Sure, you could decrease the size of the audio buffer you're using, and thus get lower latencies. But if a moment later you're only doing arrangement work, you won't have much of a need for super-low latencies. Instead what you want is a snappy, responsive UI. Otherwise you'll just get frustrated when the UI keeps lagging.
 
