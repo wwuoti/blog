@@ -3,14 +3,17 @@ title: "Heavy CPU in Reaper usage after adding user to realtime group"
 category: "Linux"
 date: "2024-09-14 13:00"
 desc: "RT priorities work in mysterious ways"
-#thumbnail: "./images/reaper_profiling/hotspot_perf.png"
 thumbnail: "./images/reaper_profiling/reaper_perf_cover.png"
 alt: "markdown logo"
 ---
 
+![](images/reaper_profiling/reaper_perf_cover.png)
+
 ## Context
 
-I've been using Linxu for audio production for the past 7 years right now. Despite the lack of plugins, things work great.
+*To read more on Linux pro audio, [check the Arch wiki](https://wiki.archlinux.org/title/Professional_audio), for instance.*
+
+I've been using Linux for audio production for the past 7 years right now. Despite the lack of plugins, things work great.
 
 Well, except for one thing.
 
@@ -23,7 +26,11 @@ I get awful performance if I add my user to the `audio` group. This enables user
 
 Well that's nice to know, but what about my performance issues? If I just leave my user out of the audio group, I get a relatively smooth UI in Reaper, but whenever I go record something my audio buffering just doesn't keep up, I get crackles on even moderately demanding instrument and effects chains.
 
-Once RT privileges have been enabled, my CPU usages spikes through the roof and the UI becomes hopelessly laggy. So what to do?
+In addition to being incredibly annoying in sound, the pops and crackles indicate that the audio buffer was not filled in time, forcing the playback to play an unfinished buffer. And unfinished buffer means some random, corrupt data which for sure won't sound good. And thus the pops and crackles.
+
+So what to do?
+
+Once RT privileges have been enabled, my CPU usages spikes through the roof. That's our first, simple clue.
 
 ## Sorry to interrupt you for a moment
 
@@ -131,7 +138,7 @@ We have `thread priority` set to `highest` and `behavior` set to `15 - very aggr
 
 Changing the behavior back `0-relaxed` has dramatic effects: CPU usage is now basically identical to running without realtime privileges. What's more, when testing  
 
-![](images/reaper_profiling/reaper_audio_buffering)
+![](images/reaper_profiling/reaper_audio_buffering.png)
 
 Same goes for overall CPU usage: when using `15 - very aggressive`, CPU gets to 80% usage while playback is on. However, when dialing it back to automatic, or `0 - relaxed`,  average CPU usage across all
 
@@ -188,11 +195,14 @@ But once we move to the middle, the UI thread starts to get more orange. Here th
 
 ![](images/reaper_profiling/reaper_perf_cut2.png)
 
-### Lessons learned: configure your things correctly
+### Lessons learned: watch a little bit what your applications are doing
 
 But why did this matter at all? In an audio production application the only thing which matters is the speed at which it can process the audio, right?
 
-Well, depends on your use cases. You only need your application to handle the current workload, no more, no less. So if you don't get any audio buffering issues, there's no need to force the buffering any further.
+Well, depends on your use cases. In terms of performance, you only need your application to handle the current workload, no more, no less.
 
 Sure, you could decrease the size of the audio buffer you're using, and thus get lower latencies. But if a moment later you're only doing arrangement work, you won't have much of a need for super-low latencies. Instead what you want is a snappy, responsive UI. Otherwise you'll just get frustrated when the UI keeps lagging.
+
+So if you don't get any audio buffering issues, there's no need to force the buffering any further. Instead, remember that everything is a compromise and you need to act accordingly.
+
 
