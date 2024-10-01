@@ -1,5 +1,5 @@
 ---
-title: "Heavy CPU in Reaper usage after adding user to realtime group"
+title: "Heavy CPU usage in Reaper with realtime privileges"
 category: "Linux"
 date: "2024-09-14 13:00"
 desc: "RT priorities work in mysterious ways"
