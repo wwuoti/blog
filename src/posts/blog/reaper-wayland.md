@@ -187,6 +187,18 @@ p2 x: 6406 y:p2.2073
 ```
 
 Hold on, what? My desktop resolution is 3840x2160, the x coordinate is going off the charts.
+ 
+Okay, that `p2` is coming from the GDK event `x_root` and `y_root`.
+It's assigned from GdkEvent
+
+Wait. Just to make sure, maybe I have something wrong in my environment?
+That 6000px x coordinate would indicate that.
+Well, my X screen does have that size due to two monitors, but I run Sway in a single window.
+I think I have some scaling on, 1.25x for GDK and QT apps.
+Maybe that could be it? 6400/3840 is ~ 1.67, so that can't be.
+
+I wonder how this behaves if I move the Sway window to my second monitor ?
+Oh. Now it works. All the debugging for nothing.
 
 ### X won't give it to you
 
