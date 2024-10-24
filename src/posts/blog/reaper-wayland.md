@@ -13,7 +13,7 @@ alt: "markdown logo"
 
 Wayland has been getting ever so popular lately, but there's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
-I wanted to know if there's any progress being made on Wayland support. A quick search pointed me to an IRC discussion on `#wayland`.
+
 Turns out that the API Reaper uses for rendering its UI on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository.
 
 WDL contains much more, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
@@ -119,17 +119,27 @@ In either case, we can see that we're running on Wayland.
 
 Now we start to get to the interesting bits.
 
-There's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own ExposeEvent event, which 
+There's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own ExposeEvent event, which occurs when an GDK thinks an area needs to be redrawn on the UI.
 
-The `updatetoscreen` function instead renders the screen when no expose events have occurred.
+In practice this means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
 
-In practice this means the volume meters of your tracks.
+The `updatetoscreen` function on the other hand renders the screen when no expose events have occurred.
 
-These have to update much more frequently than any event would arrive.
+In practice this means the volume meters of your tracks and the main playhead, which goes from left to right when you press play.
 
-After commenting out all in the `updatetoscreen` function, now the UI starts rendering somewhat properly.  Hover effects work, elements resized correctly.
+These have to update much more frequently than any event would arrive. Even when the user just sitting still, you still need to update the screen on the status of the playback and the volume level of the various tracks. So separate drawing for that is completely understandable.
 
-But now none of the db meters, neither the playhead update when playback is started. Well that's due to removing the rendering of those parts.
+But that separate drawing now keeps messing up everything on Wayland.
+
+#### Debugging the screen updates
+
+After commenting out everything in the `updatetoscreen` function, now the UI starts rendering somewhat properly.  Hover effects work and elements resized correctly.
+
+But now none of the db meters, neither the playhead update when playback is started. Well that's due to removing the rendering of those parts obviously.
+
+But why did this happen? Think about a single expose event. You hover over one element once, the UI renders that element and that's it. 
+
+Now think about the volume meters and the playhead. Those are updating *all the time*.
 
 Since the `updatetoscreen` is called more frequently, chances are that immediately after an expose event it's time to render the db meters and the playhead.
 
@@ -159,6 +169,17 @@ const cairo_region_t* rrr = cairo_region_create_rectangle(&cairo_rect);
 GdkDrawingContext* context = gdk_window_begin_draw_frame(hwnd->m_oswindow, rrr);
 ```
 
+Now the oswindow updates are not disturbing the hover events anymore. 
+
+But there's still more to this screen update issue.
+
+#### Lackluster playback
+
+
+When pressing play, the playhead updates maybe once, and then nothing.
+
+Maybe color the areas differently on both the oswindow update and the expose event updates?
+
 ### Mouse events not being sent correctly?
 
 Suddenly after making a clean build I'm greeted by the UI not rendering my mouse hover events at all. When hovering the mouse over Reaper's track control panel I get this:
@@ -187,7 +208,7 @@ p2 x: 6406 y:p2.2073
 ```
 
 Hold on, what? My desktop resolution is 3840x2160, the x coordinate is going off the charts.
- 
+
 Okay, that `p2` is coming from the GDK event `x_root` and `y_root`.
 It's assigned from GdkEvent
 
@@ -197,18 +218,33 @@ Well, my X screen does have that size due to two monitors, but I run Sway in a s
 I think I have some scaling on, 1.25x for GDK and QT apps.
 Maybe that could be it? 6400/3840 is ~ 1.67, so that can't be.
 
-I wonder how this behaves if I move the Sway window to my second monitor ?
-Oh. Now it works. All the debugging for nothing.
+Luckily I have a second monitor. So move sway there and start reaper, let's try again.
+
+Oh. Now it works.
+
+![](images/reaper_wayland/track_resize_working.png)
+
+And what if I the whole `sway` window back to my main display?
+
+Still working.
+
+And what if I restart reaper while sway is running on the main display?
+
+Broken again.
+
+I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
+
+Unfortunately this isn't even the biggest problem, there's still more to come.
 
 ### X won't give it to you
 
-But wait there's still more. Try to add a plugin to any of your tracks.
+Let's add a plugin to a new track. Specifically a 3rd party VST. Aaaaaand that's a segfault.
 
-One of the unfortunate 
+
 
 So your application also kind of acts like a window manager, or a separate desktop environment.
 
-Hear that? That's the scope of my little hobby project blowing up.
+Hear that? That's the scope of my little side project blowing up.
 
 There's some interesting work related to this made by presonos (TODO: link here)
 
