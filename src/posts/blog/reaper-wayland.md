@@ -240,6 +240,24 @@ And it's not like the rendering breaks on X11, you saw from the previous video t
 
 Maybe let's dig down deeper to what are the **actual** differences between `OnExposeEvent` and `updatetoscreen` rendering? Maybe there would be something extra necessary to be done on Wayland to refresh the screen.
 
+Well, not a whole lot. But instead of drawing peculiarities, what about the contents being drawn?
+If you keep rendering the same contents over and over again, it doesn't matter how frequently your function is called.
+
+So what if the backing store is only updated when the `OnExposeEvent` is called?
+
+Well, one of the interesting bits is resizing of Reaper's main window.
+Here the playhead gets drawn to its correct position, once per resize.
+
+So what gives?
+
+The whole backing store gets destroyed and rebuilt. Maybe that's why?
+TODO: backingstore recreation here?
+
+But also, there shouldn't be any static colors on the playhead area, since assuming that `updatetoscreen` is called constantly.
+
+So if there's a lot of calls to `updatetoscreen`, there should also be new random color combinations being drawn as well.
+
+So something *still* prevents the recolored bitmap contents from being rendered on the screen. But what is it?
 
 <!--
 
