@@ -1,7 +1,7 @@
 ---
 title: "Reaper on Wayland"
 category: "Linux"
-date: "2024-01-07 19:26"
+date: "2024-11-15"
 desc: "Open sourcing your work has surprising consequences"
 thumbnail: "./images/default.jpg"
 alt: "markdown logo"
@@ -14,17 +14,17 @@ alt: "markdown logo"
 Wayland has been getting ever so popular lately, but there's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
 
-Turns out that the API Reaper uses for rendering its UI on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository.
+However, in addition to the many things Reaper does well, turns out that the API Reaper uses for rendering its UI on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
 
-WDL contains much more, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
+WDL contains a lot of features, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
 
 What happens under the hood in SWELL is that it uses GDK for displaying all the various UI windows, along wit Cairo for rendering.
 
+But why doesn't it run on Wayland then? Let's find out.
+
 ## Getting started
 
-First, let's replace the libSwell library used by our existing Reaper installation.
-
-Next, build SWELL with `make`. 
+First, let's replace the libSwell library used by our existing Reaper installation. Start by building SWELL with `make`:
 
 ```
 cd WDL/WDL/swell
@@ -113,6 +113,15 @@ This gives us
 ```
 
 Alternatively, run `xprop` and hover the cursor on top of the Reaper's main window.
+
+If running on X11, you would the crosshair of xprop:
+
+![](images/reaper_wayland/reaper_opened_on_x11.png)
+
+Whereas now on Wayland we get this:
+![](images/reaper_wayland/reaper_opened_on_wayland.png)
+
+Even though you had xprop running on the background.
 In either case, we can see that we're running on Wayland.
 
 ### Screen updates are broken?
@@ -173,19 +182,77 @@ Now the oswindow updates are not disturbing the hover events anymore.
 
 But there's still more to this screen update issue.
 
-#### Lackluster playback
-
+#### Playhead not updating
 
 When pressing play, the playhead updates maybe once, and then nothing.
 
 Maybe color the areas differently on both the oswindow update and the expose event updates?
+Yeah, let's add that.
+
+```cpp
+
+#ifdef RAND_COLOR_OVERLAY
+    auto r1 = ((double) rand() / (RAND_MAX));
+    auto r2 = ((double) rand() / (RAND_MAX));
+    auto r3 = ((double) rand() / (RAND_MAX));
+    cairo_set_source_rgba(crc, r1, r2, r3, 0.5); 
+    cairo_rectangle(crc, cairo_rect.x, cairo_rect.y, cairo_rect.width, cairo_rect.height);
+    cairo_clip(crc);
+    cairo_fill(crc);
+    cairo_paint_with_alpha(crc, 0.1);
+#endif //RAND_COLOR_OVERLAY
+```
+
+Simply put, this code takes 3 random values, one for red, one for blue and one for green.
+These are then forwarded to Cairo, which allows us to overlay the region with a random color.
+
+Lastly, we paint the whole surface with 10% transparency.
+Should've seen my face when I painted the surface without any alpha, now there wasn't too much anything to debug anymore.
+
+Now when SWELL is compiled with the `RAND_COLOR_OVERLAY` you'll get to see some flickering lights whenever `updatetoscreen` is called.
+
+Let's take a look at this on Wayland.
+<video controls src='video/reaper_wayland.webm' width=100%/>
+In the video I:
+
+- Start the playback
+  * The audio playhead starts moving, but occasionally it freezes
+  * This is due to the `updatetoscreen` function not being called
+- Resize the first audio track
+  * This calls a separate function intended for resizing
+  * Here the whole screen is set to be refreshed
+  * And as such you get the playhead moving
+
+But how does it look on X11? Like the following:
+
+NOTE: This video contains rapidly flickering lights!
+<video controls src='video/reaper_xorg.webm' width=100%/>
+
+You can see how the playback area flashes constantly flashes now that the refresh events are sent correctly.
+Even if I'm not moving my mouse, the playback area still refreshes constantly.
+
+Funnily enough, the rendering done in `OnExposeEvent` is very similar to rendering done in `updatetoscreen`. So what gives? Is there something on Wayland that prevents the `updatetoscreen` function from being called? Let's add some good old `printf` debugging and see how much spam we get in terminal:
+
+Okay, a lot. The `updatetoscreen` function is called as expected (very frequently). So something **has** to prevent the contents from ending up on the screen?
+
+I already overrode the rectangle to be my whole screen.
+And it's not like the rendering breaks on X11, you saw from the previous video that it worked as expected.
+
+Maybe let's dig down deeper to what are the **actual** differences between `OnExposeEvent` and `updatetoscreen` rendering? Maybe there would be something extra necessary to be done on Wayland to refresh the screen.
+
+
+<!--
+
+Now we're getting to the part where Reaper actually uses SWELL's APIs.
+Since I don't have access to Reaper's source code, I can't just look at what does the calls to `updatetoscreen`.
+-->
 
 ### Mouse events not being sent correctly?
 
-Suddenly after making a clean build I'm greeted by the UI not rendering my mouse hover events at all. When hovering the mouse over Reaper's track control panel I get this:
+Suddenly after making a clean build I'm greeted by the UI not rendering my mouse hover events at all.
+When hovering the mouse over Reaper's track control panel I get this:
 
 ![](images/reaper_wayland/track_resize.png)
-
 
 The mouse is supposed to change it's indicator to resize at the bottom. So we've got some very odd mouse offset going on.
 
@@ -232,21 +299,32 @@ And what if I restart reaper while sway is running on the main display?
 
 Broken again.
 
+So the solution is to start Reaper on a display without scaling and then move the window to the window with scaling. Got it.
 I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
 
 Unfortunately this isn't even the biggest problem, there's still more to come.
 
 ### X won't give it to you
 
-Let's add a plugin to a new track. Specifically a 3rd party VST. Aaaaaand that's a segfault.
+Let's add a plugin to a new track. Specifically a 3rd party VST.
 
+> `Segmentation fault: 11 (core dumped)`
 
+Ah, crashed again. Better get used to it.
+The issue in this case is that there's already quite a bit of trickery going on in SWELL to even enable embedding plugin windows inside Reaper.
+
+The problem is mimicking that behavior on Wayland. On X you have access to a global server which gives you information on any other processes windows.
+Whereas in Wayland (in being more secure) you can't exactly just point at a process ID and then start messing around with its various windows.
+
+To enable similar behavior on Wayland, Reaper would have to act as a Wayland compositor in addition to everything else it does.
 
 So your application also kind of acts like a window manager, or a separate desktop environment.
 
-Hear that? That's the scope of my little side project blowing up.
-
 There's some interesting work related to this made by presonos (TODO: link here)
+
+But as there's not much progress being made, I assume the scope for that goes way beyond me and my small blog post.
+
+But there's still things we can do.
 
 #### Swell and CreateBridgeWindow
 
@@ -257,6 +335,22 @@ The bridging function is quite long, but here's a short summary on it:
 - Assign a callback function (for resizing and other operations)
 - Send the newly created bridge window forward
 
-So what do do on Wayland? 
+So what do do on Wayland? Instead of attempting to implement a full Wayland compositor inside someone else's APIs, we'll use some XWayland trickery instead.
 
-This will still require creating a
+This isn't nearly as bad of an option as it sounds since when dealing with DAW plugins means you've got hundreds of different pieces of software.
+The selection of Linux-compatible plugins isn't exactly huge to begin with, so there's no need to break compatibility with even the few ones which exist.
+
+So let's implement the following:
+
+- Create a "placeholder" GDK window which we feed onto existing SWELL functions
+    * This is equivalent to the real plugin bridge window being created on X
+- Also create a raw X11 window using XLib
+- Use that XLib window as a parent for the plugin window which appears
+- XWayland will automatically create a Wayland window for this plugin X11 window
+
+Okay, the last bit is something I didn't actually implement. It's something that would be really nice, but it rather reeks of edge cases and headaches.
+So for the purposes of this blog post, let's just create those X11 windows anyway and leave their control to XWayland.
+
+Okay, let's try again.
+
+
