@@ -126,25 +126,52 @@ In either case, we can see that we're running on Wayland.
 
 ### Screen updates are broken?
 
-Now we start to get to the interesting bits.
+Now we start to get to the interesting bits. While browsing the UI, not a whole lot of the screen seems to update.
+I can see the track layout and the playhead view, but scrolling does mostly nothing.
 
-There's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own ExposeEvent event, which occurs when an GDK thinks an area needs to be redrawn on the UI.
+Here's the starting point when having 10 or so tracks:
+
+TODO: Reaper started with broken screen updates image here
+
+And here's the screen when it's scrolled to the bottom:
+
+TODO: Reaper started with broken screen updates image here
+
+Let's investigate this more.
+
+#### How does it render?
+
+First we'll need to find what actually draws the updates to the screen.
+Since I'm on Linux, SWELL uses GDK and Cairo for drawing on the screen, and the functions are found in the file `swell-gdk-generic.cpp`
+
+In `swell-gdk-generic.cpp`, there's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own `ExposeEvent`, which occurs when an GDK thinks an area needs to be redrawn on the UI.
 
 In practice this means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
 
-The `updatetoscreen` function on the other hand renders the screen when no expose events have occurred.
+The `swell_oswindow_updatetoscreen` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call is made in `swell-gdi-lice.cpp`
 
-In practice this means the volume meters of your tracks and the main playhead, which goes from left to right when you press play.
+TODO: read more on ReleaseDC on Win32 API docs.
 
-These have to update much more frequently than any event would arrive. Even when the user just sitting still, you still need to update the screen on the status of the playback and the volume level of the various tracks. So separate drawing for that is completely understandable.
+In practice this means rendering the volume meters:
 
-But that separate drawing now keeps messing up everything on Wayland.
+![](images/reaper_wayland/reaper_track_volume.png)
+
+And the main playhead (the yellow vertical line which moves from left to right when you press play):
+
+![](images/reaper_wayland/reaper_playhead.png)
+
+The volume meters and main playhead have to update much more frequently than any event would arrive.
+Even when the user just is sitting still, you still need to update the playback position and the volume of individual tracks.
+So drawing outside of the event loop s completely understandable.
+
+But drawing outside the event loop  now keeps messing up everything on Wayland.
 
 #### Debugging the screen updates
 
 After commenting out everything in the `updatetoscreen` function, now the UI starts rendering somewhat properly.  Hover effects work and elements resized correctly.
 
-But now none of the db meters, neither the playhead update when playback is started. Well that's due to removing the rendering of those parts obviously.
+But now none of the db meters, neither the playhead update when playback is started.
+Well that's due to removing the rendering of those parts obviously.
 
 But why did this happen? Think about a single expose event. You hover over one element once, the UI renders that element and that's it. 
 
@@ -178,19 +205,20 @@ const cairo_region_t* rrr = cairo_region_create_rectangle(&cairo_rect);
 GdkDrawingContext* context = gdk_window_begin_draw_frame(hwnd->m_oswindow, rrr);
 ```
 
-Now the oswindow updates are not disturbing the hover events anymore. 
+Now the oswindow updates are not disturbing the hover events anymore.
+All the volume meters now update, and scrolling works *somewhat*.
 
-But there's still more to this screen update issue.
-
-#### Playhead not updating
+#### From no updates to infrequent updates
 
 When pressing play, the playhead updates maybe once, and then nothing.
+The playback continues, scroll and hover events work just fine.
+But not the playback and volume meters.
 
-Maybe color the areas differently on both the oswindow update and the expose event updates?
+So how to debug this?
+Maybe color the rendered areas differently insde the `updatetoscreen` function?
 Yeah, let's add that.
 
 ```cpp
-
 #ifdef RAND_COLOR_OVERLAY
     auto r1 = ((double) rand() / (RAND_MAX));
     auto r2 = ((double) rand() / (RAND_MAX));
@@ -207,7 +235,7 @@ Simply put, this code takes 3 random values, one for red, one for blue and one f
 These are then forwarded to Cairo, which allows us to overlay the region with a random color.
 
 Lastly, we paint the whole surface with 10% transparency.
-Should've seen my face when I painted the surface without any alpha, now there wasn't too much anything to debug anymore.
+(*Should've seen my face when I painted the surface without any alpha, there wasn't anything to debug anymore.*)
 
 Now when SWELL is compiled with the `RAND_COLOR_OVERLAY` you'll get to see some flickering lights whenever `updatetoscreen` is called.
 
@@ -228,8 +256,9 @@ But how does it look on X11? Like the following:
 NOTE: This video contains rapidly flickering lights!
 <video controls src='video/reaper_xorg.webm' width=100%/>
 
-You can see how the playback area flashes constantly flashes now that the refresh events are sent correctly.
-Even if I'm not moving my mouse, the playback area still refreshes constantly.
+You can see how the playback area flashes constantly now that the refresh events are sent correctly, even if I'm not moving my mouse.
+
+#### Thoughts on the rendering
 
 Funnily enough, the rendering done in `OnExposeEvent` is very similar to rendering done in `updatetoscreen`. So what gives? Is there something on Wayland that prevents the `updatetoscreen` function from being called? Let's add some good old `printf` debugging and see how much spam we get in terminal:
 
@@ -243,7 +272,10 @@ Maybe let's dig down deeper to what are the **actual** differences between `OnEx
 Well, not a whole lot. But instead of drawing peculiarities, what about the contents being drawn?
 If you keep rendering the same contents over and over again, it doesn't matter how frequently your function is called.
 
+#### What about the backingstore?
+
 So what if the backing store is only updated when the `OnExposeEvent` is called?
+TODO: what is even a backing store
 
 Well, one of the interesting bits is resizing of Reaper's main window.
 Here the playhead gets drawn to its correct position, once per resize.
@@ -253,12 +285,47 @@ So what gives?
 The whole backing store gets destroyed and rebuilt. Maybe that's why?
 TODO: backingstore recreation here?
 
+#### No colors for me
+
 But also, there shouldn't be any static colors on the playhead area, since assuming that `updatetoscreen` is called constantly.
 
 So if there's a lot of calls to `updatetoscreen`, there should also be new random color combinations being drawn as well.
 
-So something *still* prevents the recolored bitmap contents from being rendered on the screen. But what is it?
+But if the color never changes, it's not like the bitmap contents are stuck internally. If this was the case, the playhead view would appear frozen but the color would keep flickering.
+So the same image would be displayed but just with a different color overlay each time.
 
+Since this is not the case it has to be in how the Cairo drawing context is handled in the `OnExposeEvent` function and in `updatetoscreen`.
+
+Well just for fun, let's comment out the Cairo rendering calls from `OnExposeEvent`. Now we won't get any updates on mouse hovers etc. but we should still get the main playback view.
+
+On Wayland, nothing.
+
+But what about X11? Yes, the playback view still shows up.
+
+So the issue is that the Cairo overlays go through somewhat, but they don't actually end up on the screen by the `updatetoscreen`.
+Instead, they "wait" for the update to the next `ExposeEvent` to happen, after which the view which was rendered the last time shows up on the screen.
+And that's why the flickering does not happen.
+
+But what about the prints from the color overlay? They are still called on Wayland.
+So there is *something* being colored, but it just never shows up.
+
+My intuition says that there would be something wrong in the way Cairo rendering is used, making it not work on Wayland. But when it works just fine on X11, it does make me curious on what is really going on.
+
+Maybe let's ask ChatGPT for (dumb) suggestions.
+
+TODO: ChatGPT asking me to force invalidate the rectangle
+
+It does actually work (somewhat): After calling `gdk_window_invalidate_rect()` in the end of `updatetoscreen`, suddenly the playback view starts renderng correctly.
+There's no expose events being sent and it still updates.
+
+But there's no color overlay now, which means that the `RAND_COLOR_OVERLAY` changes I did to `updatetoscreen` don't end up actually being rendered.
+
+So maybe it's due to some missing flushing or something?
+
+There's also a SWELL function which directly calls this, `swell_oswindow_invalidate`.
+
+
+ 
 <!--
 
 Now we're getting to the part where Reaper actually uses SWELL's APIs.
@@ -267,12 +334,15 @@ Since I don't have access to Reaper's source code, I can't just look at what doe
 
 ### Mouse events not being sent correctly?
 
-Suddenly after making a clean build I'm greeted by the UI not rendering my mouse hover events at all.
-When hovering the mouse over Reaper's track control panel I get this:
+Even after fixing the playhead view updates, there's still more issues on the screen updates.
+
+All of the mouse hover elements aren't doing anything. For instance, when you hover your cursor over the `M` (mute) or `S` (solo) buttons, they're supposed to change to a slightly lighter color.
+
+In addition, when hovering the mouse over Reaper's track control panel I get this:
 
 ![](images/reaper_wayland/track_resize.png)
 
-The mouse is supposed to change it's indicator to resize at the bottom. So we've got some very odd mouse offset going on.
+The mouse is supposed to change it's indicator to a resize cursor at the bottom of that light grey are. And certainly not in the middle. Looks like we've got some very odd mouse offset going on.
 
 Oh well, let's add some more prints. Here `m` is the mouse event as delivered by GDK. 
 
@@ -292,10 +362,9 @@ p2 x: 6406 y:p2.2027
 p2 x: 6406 y:p2.2073 
 ```
 
-Hold on, what? My desktop resolution is 3840x2160, the x coordinate is going off the charts.
+Hold on, what? My desktop's resolution is 3840x2160, so the x coordinate is going off the charts.
 
 Okay, that `p2` is coming from the GDK event `x_root` and `y_root`.
-It's assigned from GdkEvent
 
 Wait. Just to make sure, maybe I have something wrong in my environment?
 That 6000px x coordinate would indicate that.
@@ -320,7 +389,10 @@ Broken again.
 So the solution is to start Reaper on a display without scaling and then move the window to the window with scaling. Got it.
 I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
 
-Unfortunately this isn't even the biggest problem, there's still more to come.
+Let's open Sway separately instead of inside X11 so that we get a proper look on this.
+
+
+Unfortunately these scren updates aren't even the biggest problem, there's still more to come.
 
 ### X won't give it to you
 
