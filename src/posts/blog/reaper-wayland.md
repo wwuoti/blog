@@ -14,7 +14,7 @@ alt: "markdown logo"
 Wayland has been getting ever so popular lately, but there's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
 
-However, in addition to the many things Reaper does well, turns out that the API Reaper uses for rendering its UI on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
+However, in addition to the many things Reaper does well, turns out that the API it uses for UI rendering on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
 
 WDL contains a lot of features, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
 
@@ -114,15 +114,15 @@ This gives us
 
 Alternatively, run `xprop` and hover the cursor on top of the Reaper's main window.
 
-If running on X11, you would the crosshair of xprop:
+If running on X11 through xwayland, you would get a crosshair with xprop:
 
 ![](images/reaper_wayland/reaper_opened_on_x11.png)
 
 Whereas now on Wayland we get this:
+
 ![](images/reaper_wayland/reaper_opened_on_wayland.png)
 
-Even though you had xprop running on the background.
-In either case, we can see that we're running on Wayland.
+In either case, we can see that Repaer is now running on Wayland.
 
 ### Screen updates are broken?
 
@@ -361,16 +361,30 @@ p2 x: 6406 y:p2.1967
 p2 x: 6406 y:p2.2027 
 p2 x: 6406 y:p2.2073 
 ```
-
 Hold on, what? My desktop's resolution is 3840x2160, so the x coordinate is going off the charts.
 
-Okay, that `p2` is coming from the GDK event `x_root` and `y_root`.
+That `p2` is coming from the GDK event `x_root` and `y_root`, interesting.
+
+So since the coordinates are already weird coming from GDK, it's likely an environment issue and not me poking around SWELl's code.
+
+
 
 Wait. Just to make sure, maybe I have something wrong in my environment?
 That 6000px x coordinate would indicate that.
 Well, my X screen does have that size due to two monitors, but I run Sway in a single window.
 I think I have some scaling on, 1.25x for GDK and QT apps.
-Maybe that could be it? 6400/3840 is ~ 1.67, so that can't be.
+Not really related to Reaper, but Sway has this:
+```
+output DP-1 scale 1.2 
+```
+
+But since X11 doesn't have any scaling, I've configured Reaper separately to use 1.3x scaling:
+TODO: reaper scaling options here
+
+Maybe that could be it? 6400/3840 is ~ 1.67. The combined scale of 1.2 x 1.3 is 1.56, so we're not quite there yet.
+``
+1.2 * 1.3 * 3840 = 5990.4
+``
 
 Luckily I have a second monitor. So move sway there and start reaper, let's try again.
 
@@ -382,17 +396,75 @@ And what if I the whole `sway` window back to my main display?
 
 Still working.
 
-And what if I restart reaper while sway is running on the main display?
+And what if I restart reaper while sway is running on the main display (DP-1)?
 
 Broken again.
 
+So Sway does handle the scaling somewhat automatically. But the problem is that since X11 (and win32 API for that matter) does not support scaling, there's all kinds of tricks done in SWELL to get it working.
+
 So the solution is to start Reaper on a display without scaling and then move the window to the window with scaling. Got it.
-I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
 
 Let's open Sway separately instead of inside X11 so that we get a proper look on this.
+Ah, here the UI elements are much larger than before.
+
+So GDK does some of its own scaling in addition to SWELL's scaling.
+
+I have `output DP-1 scale 1.2`  in my Sway config.
+To make matters even more complicated, I also have `Xft.dpi: 120` in my `.Xresources`.
 
 
-Unfortunately these scren updates aren't even the biggest problem, there's still more to come.
+<!--
+I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
+-->
+
+Unfortunately these screen updates aren't even the biggest problem, there's still more to come.
+
+### Popups opening in incorrect places
+
+Right now all popups and dialogs open at incorrectly on Wayland. Instead of appearing right where the mouse is, they are shown in the middle of the screen:
+
+![Reaper hover shown only on middle](images/reaper_wayland/hover.png)
+
+Maybe this has something to do with all the excluded X11-related functions?
+
+Or maybe it's not GDK-related at all?
+Let's start by looking at some windowing-related code. 
+
+TOOD: swell-wnd-generic.cpp and SetWindowPos
+
+Going to Swell, the
+There's a reposflag
+After this there's a `swell_oswindow_resize` function which in turn calls `gdk_window_move_resize` or `gdk_window_move`
+
+```
+  if ((reposflag&3)==3) gdk_window_move_resize(wnd,f.left,f.top,f.right-f.left,f.bottom-f.top);
+```
+
+Trouble is that the values here look correct, the coordinates at which the popup menu should be displayed are the same as the last mouse coordinates
+
+A quick look in debugger gives me this:
+```
+*- f: {...}
+    - left: 390
+    - top: 245
+    - right: 817
+    - bottom: 989
+```
+
+And these were the last few mouse positions:
+
+```
+p1 x: 395 p1 y: 228 
+p2 x: 400 p2 y: 263 
+p1 x: 385 p1 y: 211 
+p2 x: 390 p2 y: 246 
+```
+
+So the newly created popup or dialog should get placed right were the mouse is.
+
+But it goes to the center of the screen.
+
+Wait a moment, is this another environment issue? Maybe it's just Sway centering all floating dialogs?
 
 ### X won't give it to you
 
