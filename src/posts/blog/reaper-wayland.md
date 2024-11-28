@@ -442,6 +442,12 @@ After this there's a `swell_oswindow_resize` function which in turn calls `gdk_w
 
 Trouble is that the values here look correct, the coordinates at which the popup menu should be displayed are the same as the last mouse coordinates
 
+Sidenote: to get quickly get the process ID of Reaper, let's run this:
+
+```
+ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection clipboard
+```
+
 A quick look in debugger gives me this:
 ```
 *- f: {...}
@@ -465,6 +471,30 @@ So the newly created popup or dialog should get placed right were the mouse is.
 But it goes to the center of the screen.
 
 Wait a moment, is this another environment issue? Maybe it's just Sway centering all floating dialogs?
+Let's try the same on Gnome:
+![Gnome Reaper popup window placement](./images/reaper_wayland/gnome_popup.png)
+
+Nope. Still all over the place.
+But hold on a moment. Shouldn't the position of the popup change relative to the position of Reaper's main window?
+
+Well, depends on if it's a parent or a child window.
+
+GDK docs had this:
+
+> Repositions a window relative to its parent window. For toplevel windows, window managers may ignore or modify the move; you should probably use gtk_window_move() on a GtkWindow widget anyway, instead of using GDK functions. For child windows, the move will reliably succeed.
+
+So maybe the popup dialogs are created incorrectly as toplevel windows?
+
+A quick check reveals that there is a parent window:
+
+```cpp
+void swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)
+----
+        if (parent == NULL) 
+            printf("Toplevel\n");
+        else
+            printf("child \n");
+```
 
 ### X won't give it to you
 
