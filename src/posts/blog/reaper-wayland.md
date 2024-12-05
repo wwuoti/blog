@@ -496,6 +496,139 @@ void swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)
             printf("child \n");
 ```
 
+But maybe it could be the dialog window not being set as a transient window?
+
+
+There's this rather large section which decides whether or not the SWELL window is 
+
+```cpp
+          if (!(hwnd->m_style & WS_CAPTION)) 
+          {
+            if (hwnd->m_style != WS_CHILD && !(gdk_options&OPTION_BORDERLESS_OVERRIDEREDIRECT))
+            {
+              if (transient_for)
+                gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
+              gdk_window_set_type_hint(hwnd->m_oswindow, (gdk_options&OPTION_BORDERLESS_DIALOG) ? GDK_WINDOW_TYPE_HINT_DIALOG : GDK_WINDOW_TYPE_HINT_NORMAL);
+              gdk_window_set_decorations(hwnd->m_oswindow,(GdkWMDecoration) 0);
+            }
+            else
+            {
+              gdk_window_set_override_redirect(hwnd->m_oswindow,true);
+              override_redirect=true;
+            }
+            if (!SWELL_topwindows || 
+                (SWELL_topwindows==hwnd && !hwnd->m_next)) wantfocus=true;
+          }
+          else 
+          {
+            GdkWindowTypeHint type_hint = GDK_WINDOW_TYPE_HINT_NORMAL;
+            GdkWMDecoration decor = (GdkWMDecoration) (GDK_DECOR_ALL | GDK_DECOR_MENU);
+
+            if (!(hwnd->m_style&WS_THICKFRAME))
+              decor = (GdkWMDecoration) (GDK_DECOR_BORDER|GDK_DECOR_TITLE|GDK_DECOR_MINIMIZE);
+
+            if (transient_for)
+            {
+              gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
+              if (modal)
+                gdk_window_set_modal_hint(hwnd->m_oswindow,true);
+            }
+
+            if (modal) type_hint = GDK_WINDOW_TYPE_HINT_DIALOG;
+
+            gdk_window_set_type_hint(hwnd->m_oswindow,type_hint);
+            gdk_window_set_decorations(hwnd->m_oswindow,decor);
+          }
+
+```
+
+Adding this line manually didn't solve the issue either
+
+```cpp
+    gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
+```
+
+With WAYLAND_DEBUG=1 we get the following:
+
+```
+Move and resize to x: 1121 y: 632 width: 170 height: 22 
+child 
+[1138839.067] {Default Queue}  -> xdg_toplevel#37.set_min_size(170, 22)
+[1138839.073] {Default Queue}  -> xdg_toplevel#37.set_max_size(170, 22)
+```
+
+There's also this:
+```
+xdg_surface#39.get_toplevel(new id xdg_toplevel#31)
+xdg_toplevel#31.set_parent(nil)
+xdg_toplevel#31.set_title("reaper")
+xdg_toplevel#31.set_app_id("reaper")
+wl_surface#40.commit()
+org_kde_kwin_server_decoration_manager#11.create(new id org_kde_kwin_server_decoration#34, wl_surface#40)
+org_kde_kwin_server_decoration#34.request_mode(1)
+```
+
+So no parent is even set for this window?
+
+In fact I used `GdkWindow *parent = gdk_window_get_parent(wnd);` to retrieve the parent window.
+
+Looking at how SWELL treats this new hwnd we there's this:
+
+```
+  - hwnd: 0x3de2f3e0
+   *+ m_classname: 0x726e9f6f396f "unknown"
+   *- m_oswindow: 0x0
+   *+ m_title: 
+   *+ m_children: 0x0
+   *+ m_parent: 0x0
+```
+
+```cpp
+    GdkRectangle frame;
+    gdk_window_get_frame_extents(parent, &frame);
+```
+
+Here the frame is also empty.
+
+So for SWELL the popup is a child window but in Wayland terms there's a new toplevel window being created.
+
+So by definition it does not have a parent window. How to act on Wayland?
+
+For a quick hack, we could attempt to retrieve the main Reaper window somehow.
+
+For right-click and other popup menus, they are created in swell-menu-generic with the following code:
+
+```cpp
+int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND hwnd, const RECT *r)
+```
+
+
+```cpp
+HWND hh=new HWND__(NULL,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
+```
+
+Here the first parameter is left unassigned. And the TrackPopupMenu even already takes a window handle as an argument. So let's just use it as the parent of this new menu: 
+
+```cpp
+  HWND hh=new HWND__(hwnd,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
+```
+
+```
+  1000: libSwell.so!swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)@swell-generic-gdk.cpp:2241
+  1001: libSwell.so!swell_oswindow_manage(HWND hwnd, bool wantfocus)@swell-generic-gdk.cpp:749
+  1002: libSwell.so!ShowWindow(HWND hwnd, int cmd)@swell-wnd-generic.cpp:1085
+  1003: [Unknown/Just-In-Time compiled code]@<unknown>:0
+  1004: libSwell.so!SendMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)@swell-wnd-generic.cpp:361
+  1005: [Unknown/Just-In-Time compiled code]@<unknown>:0
+  1006: libSwell.so!SendMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)@swell-wnd-generic.cpp:361
+  1007: libSwell.so!SWELL_RunMessageLoop()@swell-wnd-generic.cpp:888
+```
+
+The `SendMessage` function is called two times, first for the parent window and then a second time for the child window.
+
+
+But mouse hover popups won't still appear at the correct place. 
+
 ### X won't give it to you
 
 Let's add a plugin to a new track. Specifically a 3rd party VST.
