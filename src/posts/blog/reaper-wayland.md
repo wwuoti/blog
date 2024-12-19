@@ -13,7 +13,6 @@ alt: "markdown logo"
 
 Wayland has been getting ever so popular lately, but there's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
-
 However, in addition to the many things Reaper does well, turns out that the API it uses for UI rendering on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
 
 WDL contains a lot of features, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
@@ -80,28 +79,24 @@ This feature isn't critical for now, so let's move on.
 
 Or this one, here we're looking at the window manager name. The whole concept of a window manager doesn't exist on Wayland, but the closest thing is the compositor. In my case Sway. Sure, the might be a programmatic way of querying it but for now I'll just hard-code it:
 
-```
+```cpp
 if (GDK_IS_X11_DISPLAY (gdkdisp))
     wmname = gdk_x11_screen_get_window_manager_name(gdk_screen_get_default());
 else
     wmname = "sway";
 ```
 
-
 After quite a few of these changes, we finally get Reaper to start up:
 
 A quick sanity check the list of current windows on sway and ensure Reaper is there:
 
-```
+```shell
 swaymsg -t get_tree
 ```
 
-
-
-
 This gives us 
 
-```
+```shell
 #1: root "root"
   #3: output "X11-1"
     #9: workspace "1:web"
@@ -115,6 +110,8 @@ This gives us
 Alternatively, run `xprop` and hover the cursor on top of the Reaper's main window.
 
 If running on X11 through xwayland, you would get a crosshair with xprop:
+
+
 
 ![](images/reaper_wayland/reaper_opened_on_x11.png)
 
@@ -131,11 +128,17 @@ I can see the track layout and the playhead view, but scrolling does mostly noth
 
 Here's the starting point when having 10 or so tracks:
 
-TODO: Reaper started with broken screen updates image here
+![](images/reaper_wayland/reaper_broken_screen_updates1.png)
 
 And here's the screen when it's scrolled to the bottom:
 
-TODO: Reaper started with broken screen updates image here
+![](images/reaper_wayland/reaper_broken_screen_updates2.png)
+
+So normally the track height should be increased, but right now it's not updating.
+
+The black bar on the right of the tracks extends to the bottom like it should.
+
+After moving the cursor from REAPER to a another window on the desktop and back, suddenly the UI is rendered properly.
 
 Let's investigate this more.
 
@@ -412,6 +415,15 @@ So GDK does some of its own scaling in addition to SWELL's scaling.
 I have `output DP-1 scale 1.2`  in my Sway config.
 To make matters even more complicated, I also have `Xft.dpi: 120` in my `.Xresources`.
 
+And if that isn't still enough, this random offset seems to change constantly.
+
+After a while of development, I'm greeted with the x-axis being offset by 857 pixels. And this time it doesn't matter if I move the sway window to a nother display. Neither does it make any difference if I launch sway as a separate session, the x-axis offset still persists.
+
+This seems to be some GDK oddity. Even though the window placement changes, the `x_root` and `y_root` never change according to that. So GDK thinks the Reaeper
+
+But then again, some day after restarting REAPER (without doing a clean build!) GDK just happens to set the offset correctly.
+
+What a bug.
 
 <!--
 I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
@@ -428,15 +440,15 @@ Right now all popups and dialogs open at incorrectly on Wayland. Instead of appe
 Maybe this has something to do with all the excluded X11-related functions?
 
 Or maybe it's not GDK-related at all?
-Let's start by looking at some windowing-related code. 
+Let's start by looking at some windowing-related code.
 
-TOOD: swell-wnd-generic.cpp and SetWindowPos
+In `swell-wnd-generic.cpp`, there's `SetWindowPos`, which in turn calls `swell_oswindow_resize` when the window needs to be resized. And that's pretty much every time a new window is updated to the screen.
 
-Going to Swell, the
-There's a reposflag
-After this there's a `swell_oswindow_resize` function which in turn calls `gdk_window_move_resize` or `gdk_window_move`
+Inside `oswindow_resize` there's a `reposflag`. Let's add some good 'ol printf debugging so we'll and expirement a bit on how new windows are shown in SWELL.
 
-```
+Inside `swell_oswindow_resize` the GDK functions `gdk_window_move_resize` and `gdk_window_move` are called.
+
+```cpp
   if ((reposflag&3)==3) gdk_window_move_resize(wnd,f.left,f.top,f.right-f.left,f.bottom-f.top);
 ```
 
@@ -444,7 +456,7 @@ Trouble is that the values here look correct, the coordinates at which the popup
 
 Sidenote: to get quickly get the process ID of Reaper, let's run this:
 
-```
+```bash
 ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection clipboard
 ```
 
@@ -501,45 +513,44 @@ But maybe it could be the dialog window not being set as a transient window?
 
 There's this rather large section which decides whether or not the SWELL window is 
 
-```cpp
-          if (!(hwnd->m_style & WS_CAPTION)) 
-          {
-            if (hwnd->m_style != WS_CHILD && !(gdk_options&OPTION_BORDERLESS_OVERRIDEREDIRECT))
-            {
-              if (transient_for)
-                gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
-              gdk_window_set_type_hint(hwnd->m_oswindow, (gdk_options&OPTION_BORDERLESS_DIALOG) ? GDK_WINDOW_TYPE_HINT_DIALOG : GDK_WINDOW_TYPE_HINT_NORMAL);
-              gdk_window_set_decorations(hwnd->m_oswindow,(GdkWMDecoration) 0);
-            }
-            else
-            {
-              gdk_window_set_override_redirect(hwnd->m_oswindow,true);
-              override_redirect=true;
-            }
-            if (!SWELL_topwindows || 
-                (SWELL_topwindows==hwnd && !hwnd->m_next)) wantfocus=true;
-          }
-          else 
-          {
-            GdkWindowTypeHint type_hint = GDK_WINDOW_TYPE_HINT_NORMAL;
-            GdkWMDecoration decor = (GdkWMDecoration) (GDK_DECOR_ALL | GDK_DECOR_MENU);
+```
+  if (!(hwnd->m_style & WS_CAPTION)) 
+  {
+    if (hwnd->m_style != WS_CHILD && !(gdk_options&OPTION_BORDERLESS_OVERRIDEREDIRECT))
+    {
+      if (transient_for)
+        gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
+      gdk_window_set_type_hint(hwnd->m_oswindow, (gdk_options&OPTION_BORDERLESS_DIALOG) ? GDK_WINDOW_TYPE_HINT_DIALOG : GDK_WINDOW_TYPE_HINT_NORMAL);
+      gdk_window_set_decorations(hwnd->m_oswindow,(GdkWMDecoration) 0);
+    }
+    else
+    {
+      gdk_window_set_override_redirect(hwnd->m_oswindow,true);
+      override_redirect=true;
+    }
+    if (!SWELL_topwindows || 
+        (SWELL_topwindows==hwnd && !hwnd->m_next)) wantfocus=true;
+  }
+  else 
+  {
+    GdkWindowTypeHint type_hint = GDK_WINDOW_TYPE_HINT_NORMAL;
+    GdkWMDecoration decor = (GdkWMDecoration) (GDK_DECOR_ALL | GDK_DECOR_MENU);
 
-            if (!(hwnd->m_style&WS_THICKFRAME))
-              decor = (GdkWMDecoration) (GDK_DECOR_BORDER|GDK_DECOR_TITLE|GDK_DECOR_MINIMIZE);
+    if (!(hwnd->m_style&WS_THICKFRAME))
+      decor = (GdkWMDecoration) (GDK_DECOR_BORDER|GDK_DECOR_TITLE|GDK_DECOR_MINIMIZE);
 
-            if (transient_for)
-            {
-              gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
-              if (modal)
-                gdk_window_set_modal_hint(hwnd->m_oswindow,true);
-            }
+    if (transient_for)
+    {
+      gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
+      if (modal)
+        gdk_window_set_modal_hint(hwnd->m_oswindow,true);
+    }
 
-            if (modal) type_hint = GDK_WINDOW_TYPE_HINT_DIALOG;
+    if (modal) type_hint = GDK_WINDOW_TYPE_HINT_DIALOG;
 
-            gdk_window_set_type_hint(hwnd->m_oswindow,type_hint);
-            gdk_window_set_decorations(hwnd->m_oswindow,decor);
-          }
-
+    gdk_window_set_type_hint(hwnd->m_oswindow,type_hint);
+    gdk_window_set_decorations(hwnd->m_oswindow,decor);
+  }
 ```
 
 Adding this line manually didn't solve the issue either
@@ -596,14 +607,11 @@ So by definition it does not have a parent window. How to act on Wayland?
 
 For a quick hack, we could attempt to retrieve the main Reaper window somehow.
 
-For right-click and other popup menus, they are created in swell-menu-generic with the following code:
+For popup menus, they are created in `swell-menu-generic.cpp` with the following code:
 
 ```cpp
 int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND hwnd, const RECT *r)
-```
-
-
-```cpp
+---- many lines ---- 
 HWND hh=new HWND__(NULL,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
 ```
 
@@ -612,6 +620,8 @@ Here the first parameter is left unassigned. And the TrackPopupMenu even already
 ```cpp
   HWND hh=new HWND__(hwnd,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
 ```
+
+And now the right-click or top menu dialogs no longer appear at the center of the screen, but relative to the mouse cursor.
 
 ```
   1000: libSwell.so!swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)@swell-generic-gdk.cpp:2241
@@ -626,8 +636,40 @@ Here the first parameter is left unassigned. And the TrackPopupMenu even already
 
 The `SendMessage` function is called two times, first for the parent window and then a second time for the child window.
 
+But mouse tooltips still appear at the center of the screen. But there doesn't seem to be any calls referring to the creation of these tooltips.
 
-But mouse hover popups won't still appear at the correct place. 
+Let's also setup a breakpoint at `HWND__` constructor in `swell-wnd-generic.cpp`.
+
+Still nothing. When opening right-click menus or new windows, the `HWND__` constructor is called. But not for 
+
+So likely this is caused by the tooltip being created as a part of Reaper's internal code. Tooltips are quite simple, and maybe there's nothing SWELL-related code in them. So REAPER just creates the new tooltip and its HWND__, after which the first time it's seen in SWELL is when the window is set to visible.
+
+But that's not what I want. Ideally I would have access to the parent window while creating the tooltip so I could set it correctly as a transient window.
+
+Although whenever a tooltip is created the `swell_oswindow_manage` function is called, and that's where the tooltip *does* already exist as a `HWND` object.
+
+Of course it might be possible to detect the tooltip based on some info in the HWND object, then keep track of 
+
+But that would move functionality out from REAPER and into SWELL a bit too much in my opinion.
+
+This isn't really even the biggest issue with the dialogs.
+
+#### One last thing with dialogs
+
+Now when the playhead moves, if a dialog is open in the edit view, it gets cut off.
+
+Same happens if it's overlayed on top of a db meter.
+
+![](images/reaper_wayland/menu_cropped.png)
+
+This is caused by the `updatetoscreen` drawing out of cycle and not taking the newly created popup into account.
+
+On X11 this wasn't an issue, as the popups were created as 
+As such the playhead could be rendered below it without any concerns
+
+To avoid this, the `updatetoscreen` would have to take other windows into account.
+
+Or maybe there whole internal logic of opening popups in REAPER should be changed.
 
 ### X won't give it to you
 
@@ -638,7 +680,7 @@ Let's add a plugin to a new track. Specifically a 3rd party VST.
 Ah, crashed again. Better get used to it.
 The issue in this case is that there's already quite a bit of trickery going on in SWELL to even enable embedding plugin windows inside Reaper.
 
-The problem is mimicking that behavior on Wayland. On X you have access to a global server which gives you information on any other processes windows.
+The problem is mimicking that behavior on Wayland. On X11 you have access to a global server which gives you information on any other processes windows.
 Whereas in Wayland (in being more secure) you can't exactly just point at a process ID and then start messing around with its various windows.
 
 To enable similar behavior on Wayland, Reaper would have to act as a Wayland compositor in addition to everything else it does.
@@ -668,7 +710,7 @@ The selection of Linux-compatible plugins isn't exactly huge to begin with, so t
 So let's implement the following:
 
 - Create a "placeholder" GDK window which we feed onto existing SWELL functions
-    * This is equivalent to the real plugin bridge window being created on X
+    * This is equivalent to the real plugin bridge window being created on X11
 - Also create a raw X11 window using XLib
 - Use that XLib window as a parent for the plugin window which appears
 - XWayland will automatically create a Wayland window for this plugin X11 window
