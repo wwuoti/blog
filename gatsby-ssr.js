@@ -1,6 +1,11 @@
 const React = require("react")
 
-exports.onRenderBody = ({ setPreBodyComponents }) => {
+exports.onRenderBody = ({ setPreBodyComponents, setHeadComponents }) => {
+  setHeadComponents([
+    <meta key="cache-control" httpEquiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />,
+    <meta key="pragma" httpEquiv="Pragma" content="no-cache" />,
+    <meta key="expires" httpEquiv="Expires" content="0" />,
+  ]);
   setPreBodyComponents([
     React.createElement("script", {
       dangerouslySetInnerHTML: {
