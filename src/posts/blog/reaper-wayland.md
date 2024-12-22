@@ -42,7 +42,13 @@ Next, ensure you have a desktop environment running on Wayland. For reference, I
 
 ### First launch
 
-Launch Reaper with:
+Sidenote: to get quickly get the process ID of Reaper, let's run this:
+
+```bash
+ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection clipboard
+```
+
+Let's start by launching Reaper with:
 
 ```bash
 cd <path_to_reaperl>
@@ -90,13 +96,13 @@ After quite a few of these changes, we finally get Reaper to start up:
 
 A quick sanity check the list of current windows on sway and ensure Reaper is there:
 
-```shell
+```bash
 swaymsg -t get_tree
 ```
 
-This gives us 
+This gives us
 
-```shell
+```
 #1: root "root"
   #3: output "X11-1"
     #9: workspace "1:web"
@@ -111,17 +117,15 @@ Alternatively, run `xprop` and hover the cursor on top of the Reaper's main wind
 
 If running on X11 through xwayland, you would get a crosshair with xprop:
 
-
-
-![](images/reaper_wayland/reaper_opened_on_x11.png)
+![Reaper opened on X11](images/reaper_wayland/reaper_opened_on_x11.png)
 
 Whereas now on Wayland we get this:
 
-![](images/reaper_wayland/reaper_opened_on_wayland.png)
+![Reaper opened on Wayland](images/reaper_wayland/reaper_opened_on_wayland.png)
 
-In either case, we can see that Repaer is now running on Wayland.
+In either case, we can see that Reaper is now running on Wayland.
 
-### Screen updates are broken?
+### Screen updates are broken
 
 Now we start to get to the interesting bits. While browsing the UI, not a whole lot of the screen seems to update.
 I can see the track layout and the playhead view, but scrolling does mostly nothing.
@@ -151,7 +155,7 @@ In `swell-gdk-generic.cpp`, there's two main points of calling Cairo's rendering
 
 In practice this means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
 
-The `swell_oswindow_updatetoscreen` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call is made in `swell-gdi-lice.cpp`
+The `swell_oswindow_updatetoscreen()` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call is made in `swell-gdi-lice.cpp`
 
 TODO: read more on ReleaseDC on Win32 API docs.
 
@@ -312,15 +316,87 @@ And that's why the flickering does not happen.
 But what about the prints from the color overlay? They are still called on Wayland.
 So there is *something* being colored, but it just never shows up.
 
-My intuition says that there would be something wrong in the way Cairo rendering is used, making it not work on Wayland. But when it works just fine on X11, it does make me curious on what is really going on.
+So what if there's a difference between X11 and Wayland on how the screen is updated?
 
-Maybe let's ask ChatGPT for (dumb) suggestions.
+Here's a snippet when running with `WAYLAND_DEBUG=1`:
 
-TODO: ChatGPT asking me to force invalidate the rectangle
+```bash
+[1394811.284] {Default Queue}  -> wl_surface#41.attach(wl_buffer#38, 0, 0)
+[1394811.304] {Default Queue}  -> wl_surface#41.set_buffer_scale(1)
+[1394811.309] {Default Queue}  -> wl_surface#41.damage(0, 0, 2528, 1378)
+[1394811.317] {Default Queue}  -> xdg_toplevel#44.set_min_size(300, 300)
+[1394811.322] {Default Queue}  -> xdg_toplevel#44.set_max_size(16384, 16384)
+[1394811.328] {Default Queue}  -> xdg_surface#43.set_window_geometry(0, 0, 2528, 1378)
+```
 
-It does actually work (somewhat): After calling `gdk_window_invalidate_rect()` in the end of `updatetoscreen`, suddenly the playback view starts renderng correctly.
-There's no expose events being sent and it still updates.
+- Attach to the surface
+- Set a scale for the buffer we're drawing
+- Damage the surface
+    * This indicates to the compositor that the surface needs to be redrawn
 
+However, there's no reference to a `commit` call here. So even though we tell Wayland that the full window needs to be redrawn, we never commit the call and apply it in action.
+
+To get 
+
+SWELL already has a function `swell_oswindow_invalidate` which under the hood calls `gdk_window_invalidate_rect`.
+
+```cpp
+void swell_oswindow_invalidate(HWND hwnd, const RECT *r) 
+{ 
+  GdkRectangle gdkr;
+  if (r)
+  {
+    gdkr.x = r->left;
+    gdkr.y = r->top;
+    gdkr.width = r->right-r->left;
+    gdkr.height = r->bottom-r->top;
+  }
+
+  gdk_window_invalidate_rect(hwnd->m_oswindow,r ? &gdkr : NULL,true);
+}
+```
+
+So the solution here is to call 
+
+```cpp
+void swell_oswindow_updatetoscreen(HWND hwnd, RECT *rect)
+----many lines omitted----
+
+    gdk_window_end_draw_frame(hwnd->m_oswindow, context);
+
+    if (temp_surface) bm->Extended(0xca140,temp_surface); // release
+
+    swell_oswindow_invalidate(hwnd, rect);
+    gdk_window_process_updates(hwnd->m_oswindow, true);
+  }
+#endif
+}
+```
+
+
+Now the playback view starts renderng correctly.
+There's no expose events being sent and it still updates constantly on Wayland.
+
+In the debug logs we can now see the `wl_commit` happening after the surface has been damaged:
+
+```bash
+[1745078.804] {Default Queue}  -> wl_surface#44.attach(wl_buffer#42, 0, 0)
+[1745078.824] {Default Queue}  -> wl_surface#44.set_buffer_scale(1)
+[1745078.827] {Default Queue}  -> wl_surface#44.damage(0, 0, 1261, 1354)
+[1745078.832] {Default Queue}  -> xdg_toplevel#36.set_min_size(300, 300)
+[1745078.837] {Default Queue}  -> xdg_toplevel#36.set_max_size(16384, 16384)
+[1745078.843] {Default Queue}  -> xdg_surface#47.set_window_geometry(0, 0, 1261, 1354)
+[1745078.870] {Default Queue}  -> wl_buffer#41.destroy()
+[1745078.875] {Default Queue}  -> wl_shm_pool#43.destroy()
+[1745079.155] {Default Queue}  -> wl_surface#44.frame(new id wl_callback#46)
+[1745079.162] {Default Queue}  -> wl_surface#44.commit()
+```
+
+Interestinly after this, no flicker happens at all on Wayland. But since the playhead now moves as expected, I'm going to let it pass.
+
+Let's move on to the next issue.
+  
+<!--
 But there's no color overlay now, which means that the `RAND_COLOR_OVERLAY` changes I did to `updatetoscreen` don't end up actually being rendered.
 
 So maybe it's due to some missing flushing or something?
@@ -328,14 +404,12 @@ So maybe it's due to some missing flushing or something?
 There's also a SWELL function which directly calls this, `swell_oswindow_invalidate`.
 
 
- 
-<!--
 
 Now we're getting to the part where Reaper actually uses SWELL's APIs.
 Since I don't have access to Reaper's source code, I can't just look at what does the calls to `updatetoscreen`.
 -->
 
-### Mouse events not being sent correctly?
+### Mouse events not being sent correctly
 
 Even after fixing the playhead view updates, there's still more issues on the screen updates.
 
@@ -368,9 +442,7 @@ Hold on, what? My desktop's resolution is 3840x2160, so the x coordinate is goin
 
 That `p2` is coming from the GDK event `x_root` and `y_root`, interesting.
 
-So since the coordinates are already weird coming from GDK, it's likely an environment issue and not me poking around SWELl's code.
-
-
+So since the coordinates are already weird coming from GDK, it's likely an environment issue and not me poking around SWELL's code.
 
 Wait. Just to make sure, maybe I have something wrong in my environment?
 That 6000px x coordinate would indicate that.
@@ -382,7 +454,13 @@ output DP-1 scale 1.2
 ```
 
 But since X11 doesn't have any scaling, I've configured Reaper separately to use 1.3x scaling:
-TODO: reaper scaling options here
+
+![Reaper scaling options](images/reaper_wayland/reaper_scaling_options.png)
+
+So there's many points at which the scaling can go wrong:
+
+- Reaper built-in scaling
+- GDK build-in scaling
 
 Maybe that could be it? 6400/3840 is ~ 1.67. The combined scale of 1.2 x 1.3 is 1.56, so we're not quite there yet.
 ``
@@ -442,11 +520,11 @@ Maybe this has something to do with all the excluded X11-related functions?
 Or maybe it's not GDK-related at all?
 Let's start by looking at some windowing-related code.
 
-In `swell-wnd-generic.cpp`, there's `SetWindowPos`, which in turn calls `swell_oswindow_resize` when the window needs to be resized. And that's pretty much every time a new window is updated to the screen.
+In `swell-wnd-generic.cpp`, there's `SetWindowPos()`, which in turn calls `swell_oswindow_resize()` when the window needs to be resized. And that's pretty much every time a new window is updated to the screen.
 
-Inside `oswindow_resize` there's a `reposflag`. Let's add some good 'ol printf debugging so we'll and expirement a bit on how new windows are shown in SWELL.
+Inside `oswindow_resize()` there's a `reposflag`. Let's add some good 'ol printf debugging so we'll and experiment a bit on how new windows are shown in SWELL.
 
-Inside `swell_oswindow_resize` the GDK functions `gdk_window_move_resize` and `gdk_window_move` are called.
+Inside `swell_oswindow_resize()` the GDK functions `gdk_window_move_resize()` and `gdk_window_move()` are called.
 
 ```cpp
   if ((reposflag&3)==3) gdk_window_move_resize(wnd,f.left,f.top,f.right-f.left,f.bottom-f.top);
@@ -454,11 +532,6 @@ Inside `swell_oswindow_resize` the GDK functions `gdk_window_move_resize` and `g
 
 Trouble is that the values here look correct, the coordinates at which the popup menu should be displayed are the same as the last mouse coordinates
 
-Sidenote: to get quickly get the process ID of Reaper, let's run this:
-
-```bash
-ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection clipboard
-```
 
 A quick look in debugger gives me this:
 ```
@@ -513,7 +586,7 @@ But maybe it could be the dialog window not being set as a transient window?
 
 There's this rather large section which decides whether or not the SWELL window is 
 
-```
+```cpp
   if (!(hwnd->m_style & WS_CAPTION)) 
   {
     if (hwnd->m_style != WS_CHILD && !(gdk_options&OPTION_BORDERLESS_OVERRIDEREDIRECT))
@@ -559,7 +632,7 @@ Adding this line manually didn't solve the issue either
     gdk_window_set_transient_for(hwnd->m_oswindow,transient_for);
 ```
 
-With WAYLAND_DEBUG=1 we get the following:
+With `WAYLAND_DEBUG=1` we get the following:
 
 ```
 Move and resize to x: 1121 y: 632 width: 170 height: 22 
@@ -611,11 +684,11 @@ For popup menus, they are created in `swell-menu-generic.cpp` with the following
 
 ```cpp
 int TrackPopupMenu(HMENU hMenu, int flags, int xpos, int ypos, int resvd, HWND hwnd, const RECT *r)
----- many lines ---- 
+---- many lines omitted ---- 
 HWND hh=new HWND__(NULL,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
 ```
 
-Here the first parameter is left unassigned. And the TrackPopupMenu even already takes a window handle as an argument. So let's just use it as the parent of this new menu: 
+Here the first parameter is left unassigned. And `TrackPopupMenu()` even already takes a window handle as an argument. So let's just use it as the parent of this new menu: 
 
 ```cpp
   HWND hh=new HWND__(hwnd,0,NULL,"menu",false,submenuWndProc,NULL, hwnd);
@@ -623,7 +696,7 @@ Here the first parameter is left unassigned. And the TrackPopupMenu even already
 
 And now the right-click or top menu dialogs no longer appear at the center of the screen, but relative to the mouse cursor.
 
-```
+```bash
   1000: libSwell.so!swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)@swell-generic-gdk.cpp:2241
   1001: libSwell.so!swell_oswindow_manage(HWND hwnd, bool wantfocus)@swell-generic-gdk.cpp:749
   1002: libSwell.so!ShowWindow(HWND hwnd, int cmd)@swell-wnd-generic.cpp:1085
@@ -640,7 +713,7 @@ But mouse tooltips still appear at the center of the screen. But there doesn't s
 
 Let's also setup a breakpoint at `HWND__` constructor in `swell-wnd-generic.cpp`.
 
-Still nothing. When opening right-click menus or new windows, the `HWND__` constructor is called. But not for 
+Still nothing. When opening right-click menus or new windows, the `HWND__` constructor is called. But not on mouse hover.
 
 So likely this is caused by the tooltip being created as a part of Reaper's internal code. Tooltips are quite simple, and maybe there's nothing SWELL-related code in them. So REAPER just creates the new tooltip and its HWND__, after which the first time it's seen in SWELL is when the window is set to visible.
 
@@ -719,5 +792,13 @@ Okay, the last bit is something I didn't actually implement. It's something that
 So for the purposes of this blog post, let's just create those X11 windows anyway and leave their control to XWayland.
 
 Okay, let's try again.
+
+Now we do get:
+- A blank GDK window (Wayland)
+- A floating plugin window (X11)
+
+TODO: screenshot of placeholder X11 window
+
+The floating plugin window is controlled as any other X11 application on Wayland, through XWayland:
 
 
