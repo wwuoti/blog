@@ -11,13 +11,13 @@ alt: "markdown logo"
 
 ## Context
 
-Wayland has been getting ever so popular lately, but there's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
+Wayland is a display communicatin protocol on Linux, and it has been getting ever so popular lately. There's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
-However, in addition to the many things Reaper does well, turns out that the API it uses for UI rendering on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
+In addition to the many things Reaper does well, turns out that the API it uses for UI rendering on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
 
 WDL contains a lot of features, but we're mostly interested in SWELL. It acts as a bridge between win32 API, allowing Reaper to run on Linux and Mac.
 
-What happens under the hood in SWELL is that it uses GDK for displaying all the various UI windows, along wit Cairo for rendering.
+What happens under the hood in SWELL is that it uses GDK for displaying all the various UI windows, along with Cairo for rendering.
 
 But why doesn't it run on Wayland then? Let's find out.
 
@@ -144,28 +144,24 @@ The black bar on the right of the tracks extends to the bottom like it should.
 
 After moving the cursor from REAPER to a another window on the desktop and back, suddenly the UI is rendered properly.
 
-Let's investigate this more.
-
 #### How does it render?
 
 First we'll need to find what actually draws the updates to the screen.
 Since I'm on Linux, SWELL uses GDK and Cairo for drawing on the screen, and the functions are found in the file `swell-gdk-generic.cpp`
 
-In `swell-gdk-generic.cpp`, there's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own `ExposeEvent`, which occurs when an GDK thinks an area needs to be redrawn on the UI.
+In `swell-gdk-generic.cpp`, there's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own `ExposeEvent`, which occurs when GDK thinks an area needs to be redrawn on the UI.
 
 In practice this means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
 
-The `swell_oswindow_updatetoscreen()` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call is made in `swell-gdi-lice.cpp`
-
-TODO: read more on ReleaseDC on Win32 API docs.
+The `swell_oswindow_updatetoscreen()` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call (from Win32 API) is made in `swell-gdi-lice.cpp`
 
 In practice this means rendering the volume meters:
 
-![](images/reaper_wayland/reaper_track_volume.png)
+![Example of Reaper volume meters](images/reaper_wayland/reaper_track_volume.png)
 
 And the main playhead (the yellow vertical line which moves from left to right when you press play):
 
-![](images/reaper_wayland/reaper_playhead.png)
+![Example of Reaper playhead](images/reaper_wayland/reaper_playhead.png)
 
 The volume meters and main playhead have to update much more frequently than any event would arrive.
 Even when the user just is sitting still, you still need to update the playback position and the volume of individual tracks.
@@ -178,7 +174,7 @@ But drawing outside the event loop  now keeps messing up everything on Wayland.
 After commenting out everything in the `updatetoscreen` function, now the UI starts rendering somewhat properly.  Hover effects work and elements resized correctly.
 
 But now none of the db meters, neither the playhead update when playback is started.
-Well that's due to removing the rendering of those parts obviously.
+Well that's due to removing the rendering of those parts.
 
 But why did this happen? Think about a single expose event. You hover over one element once, the UI renders that element and that's it. 
 
@@ -267,8 +263,9 @@ You can see how the playback area flashes constantly now that the refresh events
 
 #### Thoughts on the rendering
 
-Funnily enough, the rendering done in `OnExposeEvent` is very similar to rendering done in `updatetoscreen`. So what gives? Is there something on Wayland that prevents the `updatetoscreen` function from being called? Let's add some good old `printf` debugging and see how much spam we get in terminal:
+Funnily enough, the rendering done in `OnExposeEvent` is very similar to rendering done in `updatetoscreen`. So what gives? Is there something on Wayland that prevents the `updatetoscreen` function from being called?
 
+Let's add some good old `printf` debugging and see how much spam we get in terminal.
 Okay, a lot. The `updatetoscreen` function is called as expected (very frequently). So something **has** to prevent the contents from ending up on the screen?
 
 I already overrode the rectangle to be my whole screen.
@@ -278,6 +275,8 @@ Maybe let's dig down deeper to what are the **actual** differences between `OnEx
 
 Well, not a whole lot. But instead of drawing peculiarities, what about the contents being drawn?
 If you keep rendering the same contents over and over again, it doesn't matter how frequently your function is called.
+
+<!---
 
 #### What about the backingstore?
 
@@ -291,6 +290,7 @@ So what gives?
 
 The whole backing store gets destroyed and rebuilt. Maybe that's why?
 TODO: backingstore recreation here?
+--->
 
 #### No colors for me
 
@@ -328,17 +328,18 @@ Here's a snippet when running with `WAYLAND_DEBUG=1`:
 [1394811.322] {Default Queue}  -> xdg_toplevel#44.set_max_size(16384, 16384)
 [1394811.328] {Default Queue}  -> xdg_surface#43.set_window_geometry(0, 0, 2528, 1378)
 ```
+In short, what happens in the logs is the following:
 
-- Attach to the surface
+- Attach to the surface (the REAPER main window we're about to draw to)
 - Set a scale for the buffer we're drawing
 - Damage the surface
     * This indicates to the compositor that the surface needs to be redrawn
 
 However, there's no reference to a `commit` call here. So even though we tell Wayland that the full window needs to be redrawn, we never commit the call and apply it in action.
 
-To get 
+To force SWELL to commit the changes on Wayland, we can invalidate the are we're drawing.
 
-SWELL already has a function `swell_oswindow_invalidate` which under the hood calls `gdk_window_invalidate_rect`.
+SWELL already has a function `swell_oswindow_invalidate` which under the hood calls `gdk_window_invalidate_rect`. This should do the trick.
 
 ```cpp
 void swell_oswindow_invalidate(HWND hwnd, const RECT *r) 
@@ -392,7 +393,9 @@ In the debug logs we can now see the `wl_commit` happening after the surface has
 [1745079.162] {Default Queue}  -> wl_surface#44.commit()
 ```
 
-Interestinly after this, no flicker happens at all on Wayland. But since the playhead now moves as expected, I'm going to let it pass.
+Interestinly after this, no flicker happens at all on Wayland. So the solution is not *quite* perfect, as the color overlay I added for debugging does not work.
+
+But since the playhead now moves as expected, I'm going to let it pass.
 
 Let's move on to the next issue.
   
@@ -402,8 +405,6 @@ But there's no color overlay now, which means that the `RAND_COLOR_OVERLAY` chan
 So maybe it's due to some missing flushing or something?
 
 There's also a SWELL function which directly calls this, `swell_oswindow_invalidate`.
-
-
 
 Now we're getting to the part where Reaper actually uses SWELL's APIs.
 Since I don't have access to Reaper's source code, I can't just look at what does the calls to `updatetoscreen`.
@@ -560,7 +561,8 @@ Let's try the same on Gnome:
 ![Gnome Reaper popup window placement](./images/reaper_wayland/gnome_popup.png)
 
 Nope. Still all over the place.
-But hold on a moment. Shouldn't the position of the popup change relative to the position of Reaper's main window?
+
+Shouldn't the position of the popup change relative to the position of Reaper's main window?
 
 Well, depends on if it's a parent or a child window.
 
