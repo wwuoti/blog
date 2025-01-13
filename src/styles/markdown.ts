@@ -79,7 +79,11 @@ const Markdown = styled.article<{ rhythm: (typeof typography)["rhythm"] }>`
     margin-top: ${({ rhythm }) => rhythm(1)};
   }
 
-  ul,
+  ul
+  {
+    list-style: circle;
+    margin-left: ${({ rhythm }) => rhythm(0.5)};
+  },
   ol {
     margin-top: ${({ rhythm }) => rhythm(1)};
     margin-bottom: ${({ rhythm }) => rhythm(1)};
@@ -88,8 +92,8 @@ const Markdown = styled.article<{ rhythm: (typeof typography)["rhythm"] }>`
 
   li > ul,
   li > ol {
-    margin-top: 0;
-    margin-bottom: 0;
+    margin-top: 10;
+    margin-bottom: 10;
   }
 
   li > p {
