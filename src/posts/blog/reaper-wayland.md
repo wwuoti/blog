@@ -1,9 +1,9 @@
 ---
 title: "Reaper on Wayland"
 category: "Linux"
-date: "2024-11-15"
-desc: "Open sourcing your work has surprising consequences"
-thumbnail: "./images/default.jpg"
+date: "2025-01-10"
+desc: "Digging into WDL and GDK"
+thumbnail: "./images/reaper_wayland/reaper_broken_screen_updates1.png"
 alt: "markdown logo"
 ---
 
@@ -11,7 +11,7 @@ alt: "markdown logo"
 
 ## Context
 
-Wayland is a display communicatin protocol on Linux, and it has been getting ever so popular lately. There's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
+Wayland is a display communication protocol on Linux, and it has been getting ever so popular lately. There's still quite a lot of software lacking native support for it. One of these is Reaper. It's what I use for music production.
 
 In addition to the many things Reaper does well, turns out that the API it uses for UI rendering on Linux is open-source. It's available [here](https://github.com/justinfrankel/WDL/tree/main/WDL/swell) inside the WDL repository. And that's very convenient for the purposes of this post.
 
@@ -33,16 +33,16 @@ make DEBUG=1
 After this, you have a `libSwell.so` library file in the current directory. Let's symlink it to Reaper so that is uses the newly built one instead of the default library it ships with:
 
 ```
-cd <path_to_reaperl>
+cd <path_to_reaper>
 mv libSwell.so libsSwell.so.bak
 ln -s <path_to_WDL_repo>/WDL/swell/libSwell.so libSwell.so
 ```
 
-Next, ensure you have a desktop environment running on Wayland. For reference, I'm running Sway from a terminal on i3, my current window manager for X11. This makes prototyping Wayland work relatively easy without having to log on/off all the time. You know, commitment issues and all that.
+Next, ensure you have a desktop environment running on Wayland. For reference, I'm running Sway from a terminal on i3, my current window manager for X. This makes prototyping Wayland work relatively easy without having to log on/off all the time.
 
 ### First launch
 
-Sidenote: to get quickly get the process ID of Reaper, let's run this:
+Sidenote: to quickly get the process ID of Reaper for debugging, you can run this:
 
 ```bash
 ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection clipboard
@@ -51,7 +51,7 @@ ps aux | grep "./reaper" | grep -v "grep" | awk '{print $2}' | xclip -selection 
 Let's start by launching Reaper with:
 
 ```bash
-cd <path_to_reaperl>
+cd <path_to_reaper>
 GDK_BACKEND=wayland ./reaper
 ```
 
@@ -61,7 +61,9 @@ Aaaaand we crashed. But that's expected.
 
 There's a lot of behavior on SWELL which uses native X11 functions, such as getting the name of the current window manager. As the whole concept of a window manager is not valid on Wayland, we'll need to start branching things out.
 
-Like when the focus is deactivated, the name of the desktop is queried here:
+For instance, if I want to only include code while targeting Wayland, I use `#ifdef GDK_WINDOWING_WAYLAND`
+
+For instance, when focus is deactivated, the desktop name is queried here:
 
 ```cpp
 static void on_deactivate()
@@ -138,11 +140,10 @@ And here's the screen when it's scrolled to the bottom:
 
 ![](images/reaper_wayland/reaper_broken_screen_updates2.png)
 
-So normally the track height should be increased, but right now it's not updating.
-
+So normally the track height should be increased, but right now it's not updating. 
 The black bar on the right of the tracks extends to the bottom like it should.
 
-After moving the cursor from REAPER to a another window on the desktop and back, suddenly the UI is rendered properly.
+After moving the cursor from Reaper to a another window on the desktop and back, suddenly the UI is rendered properly.
 
 #### How does it render?
 
@@ -151,11 +152,11 @@ Since I'm on Linux, SWELL uses GDK and Cairo for drawing on the screen, and the 
 
 In `swell-gdk-generic.cpp`, there's two main points of calling Cairo's rendering functions, `swell_oswindow_updatetoscreen` and `OnExposeEvent`. `OnExposeEvent` is just an event handler for GDKs own `ExposeEvent`, which occurs when GDK thinks an area needs to be redrawn on the UI.
 
-In practice this means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
+This means various hover events, like hovering over a button or some resize handle. Resizing any element also triggers this.
 
 The `swell_oswindow_updatetoscreen()` (I'll refer to it as just `updatetoscreen`) function on the other hand renders elements out of GDK's event loop, when the ReleaseDC call (from Win32 API) is made in `swell-gdi-lice.cpp`
 
-In practice this means rendering the volume meters:
+This is what updates the volume meters:
 
 ![Example of Reaper volume meters](images/reaper_wayland/reaper_track_volume.png)
 
@@ -164,7 +165,7 @@ And the main playhead (the yellow vertical line which moves from left to right w
 ![Example of Reaper playhead](images/reaper_wayland/reaper_playhead.png)
 
 The volume meters and main playhead have to update much more frequently than any event would arrive.
-Even when the user just is sitting still, you still need to update the playback position and the volume of individual tracks.
+Even when the user just is listening, you still need to update the playback position and the volume of individual tracks.
 So drawing outside of the event loop s completely understandable.
 
 But drawing outside the event loop  now keeps messing up everything on Wayland.
@@ -208,7 +209,7 @@ const cairo_region_t* rrr = cairo_region_create_rectangle(&cairo_rect);
 GdkDrawingContext* context = gdk_window_begin_draw_frame(hwnd->m_oswindow, rrr);
 ```
 
-Now the oswindow updates are not disturbing the hover events anymore.
+Now the `oswindow` updates are not disturbing the hover events anymore.
 All the volume meters now update, and scrolling works *somewhat*.
 
 #### From no updates to infrequent updates
@@ -218,7 +219,7 @@ The playback continues, scroll and hover events work just fine.
 But not the playback and volume meters.
 
 So how to debug this?
-Maybe color the rendered areas differently insde the `updatetoscreen` function?
+Maybe color the rendered areas differently inside the `updatetoscreen` function?
 Yeah, let's add that.
 
 ```cpp
@@ -276,22 +277,6 @@ Maybe let's dig down deeper to what are the **actual** differences between `OnEx
 Well, not a whole lot. But instead of drawing peculiarities, what about the contents being drawn?
 If you keep rendering the same contents over and over again, it doesn't matter how frequently your function is called.
 
-<!---
-
-#### What about the backingstore?
-
-So what if the backing store is only updated when the `OnExposeEvent` is called?
-TODO: what is even a backing store
-
-Well, one of the interesting bits is resizing of Reaper's main window.
-Here the playhead gets drawn to its correct position, once per resize.
-
-So what gives?
-
-The whole backing store gets destroyed and rebuilt. Maybe that's why?
-TODO: backingstore recreation here?
---->
-
 #### No colors for me
 
 But also, there shouldn't be any static colors on the playhead area, since assuming that `updatetoscreen` is called constantly.
@@ -330,7 +315,7 @@ Here's a snippet when running with `WAYLAND_DEBUG=1`:
 ```
 In short, what happens in the logs is the following:
 
-- Attach to the surface (the REAPER main window we're about to draw to)
+- Attach to the surface (the Reaper main window we're about to draw to)
 - Set a scale for the buffer we're drawing
 - Damage the surface
     * This indicates to the compositor that the surface needs to be redrawn
@@ -395,9 +380,7 @@ In the debug logs we can now see the `wl_commit` happening after the surface has
 
 Interestinly after this, no flicker happens at all on Wayland. So the solution is not *quite* perfect, as the color overlay I added for debugging does not work.
 
-But since the playhead now moves as expected, I'm going to let it pass.
-
-Let's move on to the next issue.
+But since the playhead now moves as expected, I'm going to let it pass. Let's move on to the next issue.
   
 <!--
 But there's no color overlay now, which means that the `RAND_COLOR_OVERLAY` changes I did to `updatetoscreen` don't end up actually being rendered.
@@ -410,9 +393,9 @@ Now we're getting to the part where Reaper actually uses SWELL's APIs.
 Since I don't have access to Reaper's source code, I can't just look at what does the calls to `updatetoscreen`.
 -->
 
-### Mouse events not being sent correctly
+### Fixing mouse event offsets 
 
-Even after fixing the playhead view updates, there's still more issues on the screen updates.
+After fixing the playhead view updates, there's still more issues on the screen updates.
 
 All of the mouse hover elements aren't doing anything. For instance, when you hover your cursor over the `M` (mute) or `S` (solo) buttons, they're supposed to change to a slightly lighter color.
 
@@ -498,17 +481,15 @@ And if that isn't still enough, this random offset seems to change constantly.
 
 After a while of development, I'm greeted with the x-axis being offset by 857 pixels. And this time it doesn't matter if I move the sway window to a nother display. Neither does it make any difference if I launch sway as a separate session, the x-axis offset still persists.
 
-This seems to be some GDK oddity. Even though the window placement changes, the `x_root` and `y_root` never change according to that. So GDK thinks the Reaeper
+ This seems to be some GDK oddity. Even though the window placement changes, the `x_root` and `y_root` never change. So GDK thinks the parent window never moves, and as such the root coordinates are incorrect.
 
-But then again, some day after restarting REAPER (without doing a clean build!) GDK just happens to set the offset correctly.
+But then again, some day after restarting Reaper (without doing a clean build!) GDK just happens to set the offset correctly.
 
-What a bug.
+What a bug. On the bright side, you'll be fine if you don't use scaling.
 
 <!--
 I think I heard some harsh things on implementing scaling on win32. Maybe Reaper's forums or something. But I get it now.
 -->
-
-Unfortunately these screen updates aren't even the biggest problem, there's still more to come.
 
 ### Popups opening in incorrect places
 
@@ -557,20 +538,18 @@ So the newly created popup or dialog should get placed right were the mouse is.
 But it goes to the center of the screen.
 
 Wait a moment, is this another environment issue? Maybe it's just Sway centering all floating dialogs?
-Let's try the same on Gnome:
+Just to verify, let's try the same on Gnome:
 ![Gnome Reaper popup window placement](./images/reaper_wayland/gnome_popup.png)
 
-Nope. Still all over the place.
+Nope. Still all over the place. Shouldn't the position of the popup change relative to the position of Reaper's main window?
 
-Shouldn't the position of the popup change relative to the position of Reaper's main window?
-
-Well, depends on if it's a parent or a child window.
-
-GDK docs had this:
+Well, depends on if it's a parent or a child window. GDK docs had this:
 
 > Repositions a window relative to its parent window. For toplevel windows, window managers may ignore or modify the move; you should probably use gtk_window_move() on a GtkWindow widget anyway, instead of using GDK functions. For child windows, the move will reliably succeed.
 
-So maybe the popup dialogs are created incorrectly as toplevel windows?
+So maybe the popup dialogs are created incorrectly as toplevel windows? 
+
+<!---
 
 A quick check reveals that there is a parent window:
 
@@ -586,7 +565,7 @@ void swell_oswindow_resize(SWELL_OSWINDOW wnd, int reposflag, RECT f)
 But maybe it could be the dialog window not being set as a transient window?
 
 
-There's this rather large section which decides whether or not the SWELL window is 
+There's this rather large section which decides whether or not the SWELL window is set as a transient window:
 
 ```cpp
   if (!(hwnd->m_style & WS_CAPTION)) 
@@ -627,6 +606,7 @@ There's this rather large section which decides whether or not the SWELL window 
     gdk_window_set_decorations(hwnd->m_oswindow,decor);
   }
 ```
+-->
 
 Adding this line manually didn't solve the issue either
 
@@ -654,11 +634,11 @@ org_kde_kwin_server_decoration_manager#11.create(new id org_kde_kwin_server_deco
 org_kde_kwin_server_decoration#34.request_mode(1)
 ```
 
-So no parent is even set for this window?
+So no parent is ever set for this window? This would mean that the window gets the default parent, which is the root window.
 
 In fact I used `GdkWindow *parent = gdk_window_get_parent(wnd);` to retrieve the parent window.
 
-Looking at how SWELL treats this new hwnd we there's this:
+Looking at how SWELL treats this new window handle we there's this:
 
 ```
   - hwnd: 0x3de2f3e0
@@ -717,23 +697,19 @@ Let's also setup a breakpoint at `HWND__` constructor in `swell-wnd-generic.cpp`
 
 Still nothing. When opening right-click menus or new windows, the `HWND__` constructor is called. But not on mouse hover.
 
-So likely this is caused by the tooltip being created as a part of Reaper's internal code. Tooltips are quite simple, and maybe there's nothing SWELL-related code in them. So REAPER just creates the new tooltip and its HWND__, after which the first time it's seen in SWELL is when the window is set to visible.
+So likely this is caused by the tooltip being created as a part of Reaper's internal code. Tooltips are quite simple, and maybe there's nothing SWELL-related code in them. So Reaper just creates the new tooltip and its window handle, after which the first time it's seen in SWELL is when the window is set to visible.
 
 But that's not what I want. Ideally I would have access to the parent window while creating the tooltip so I could set it correctly as a transient window.
 
-Although whenever a tooltip is created the `swell_oswindow_manage` function is called, and that's where the tooltip *does* already exist as a `HWND` object.
+Although whenever a tooltip is created the `swell_oswindow_manage` function is called, and that's where the tooltip *does* already exist as a window handle (`HWND`) object.
 
-Of course it might be possible to detect the tooltip based on some info in the HWND object, then keep track of 
-
-But that would move functionality out from REAPER and into SWELL a bit too much in my opinion.
-
-This isn't really even the biggest issue with the dialogs.
+Of course it might be possible to detect the tooltip based on some info in the window handle. Then, by also keeping track of Reaper's main window you could manually it as the parent window for the tooltip window inside SWELL. But that would move functionality out from Reaper and into SWELL a bit too much in my opinion.
 
 #### One last thing with dialogs
 
 Now when the playhead moves, if a dialog is open in the edit view, it gets cut off.
 
-Same happens if it's overlayed on top of a db meter.
+Same happens if it's overlayed on top of a db meter:
 
 ![](images/reaper_wayland/menu_cropped.png)
 
@@ -748,25 +724,31 @@ Or maybe there whole internal logic of opening popups in REAPER should be change
 
 ### X won't give it to you
 
-Let's add a plugin to a new track. Specifically a 3rd party VST.
+Let's try adding a plugin to a new track. Specifically a 3rd party VST.
 
 > `Segmentation fault: 11 (core dumped)`
 
-Ah, crashed again. Better get used to it.
+Ah, crashed again. 
 The issue in this case is that there's already quite a bit of trickery going on in SWELL to even enable embedding plugin windows inside Reaper.
+
+A large part of SWELl's GDK-specific logic is bridging these plugin windows inside REAPER's own windows.
+
+For instance, here's [BwArp](https://gitlab.com/Wwuoti/juce-project), one plugin I've developed myself, inserted to a track:
+
+![bwarp_inside_reaper](images/reaper_wayland/bwarp_inside_reaper.png)
+
+So REAPER also kind of acts like a window manager, or a separate desktop environment.
 
 The problem is mimicking that behavior on Wayland. On X11 you have access to a global server which gives you information on any other processes windows.
 Whereas in Wayland (in being more secure) you can't exactly just point at a process ID and then start messing around with its various windows.
 
 To enable similar behavior on Wayland, Reaper would have to act as a Wayland compositor in addition to everything else it does.
 
-So your application also kind of acts like a window manager, or a separate desktop environment.
+There's some interesting work related to this made by PreSonus, with the Studio One DAW [already having Wayland support](https://www.presonus.software/en_US/blog/studio-one-6-5-for-linux). But Linux support in audio plugins is already very limited, and only supporting Wayland plugins fragments the support even further.
 
-There's some interesting work related to this made by presonos (TODO: link here)
+In any case, having full XWayland-style bridging inside REAPER goes way beyond me and my small blog post.
 
-But as there's not much progress being made, I assume the scope for that goes way beyond me and my small blog post.
-
-But there's still things we can do.
+But even though a production-ready solution is far away, there's still something we can experiment with.
 
 #### Swell and CreateBridgeWindow
 
@@ -787,20 +769,83 @@ So let's implement the following:
 - Create a "placeholder" GDK window which we feed onto existing SWELL functions
     * This is equivalent to the real plugin bridge window being created on X11
 - Also create a raw X11 window using XLib
-- Use that XLib window as a parent for the plugin window which appears
-- XWayland will automatically create a Wayland window for this plugin X11 window
+- Use that XLib window as a parent for the plugin window
 
-Okay, the last bit is something I didn't actually implement. It's something that would be really nice, but it rather reeks of edge cases and headaches.
-So for the purposes of this blog post, let's just create those X11 windows anyway and leave their control to XWayland.
+```cpp
+#ifdef GDK_WINDOWING_WAYLAND
+  if (GDK_IS_WAYLAND_DISPLAY (gdkdisp))
+  {
+    //x11 display should be retrieved from system, so that xwayland answers the call
+    disp = XOpenDisplay(NULL);
+    screen_num = DefaultScreen(disp);
+    w = XCreateWindow(disp,RootWindow(disp, screen_num),0,0,r->right-r->left,r->bottom-r->top,0,CopyFromParent, InputOutput, CopyFromParent, 0, NULL);
+    XMapWindow(disp, RootWindow(disp, screen_num));
+    XMapWindow(disp, w);
+    XFlush(disp);
+    GdkWindowAttr attr={0,};
+    attr.x = r->left;
+    attr.y = r->top;
+    attr.width = r->right-r->left;
+    attr.height = r->bottom-r->top;
+    attr.wclass = GDK_INPUT_OUTPUT;
+    const char *appname = g_swell_appname;
+    attr.wmclass_name = (gchar*)appname;
+    attr.wmclass_class = (gchar*)appname;
+    attr.window_type = GDK_WINDOW_CHILD;
+    gdkw = gdk_window_new(ospar, &attr, 0);
+  }
+```
 
 Okay, let's try again.
 
 Now we do get:
+
 - A blank GDK window (Wayland)
 - A floating plugin window (X11)
 
-TODO: screenshot of placeholder X11 window
+![BwArp running as X window while REAPER runs as a Wayland window](images/reaper_wayland/wayland_plugin_opened.png)
 
-The floating plugin window is controlled as any other X11 application on Wayland, through XWayland:
+The floating plugin window is controlled as any other X11 application on Wayland, through XWayland.
 
+Just to verify, here's what `swaymsg` outputs:
 
+```
+#1: root "root"
+  #2147483647: output "__i3"
+    #2147483646: workspace "__i3_scratch"
+  #3: output "X11-1"
+    #9: workspace "1:web"
+      #30: con "(null)"
+        #14: con "eliaswuoti@evo:~/reaper_wayland_test/REAPER_7.22" (xdg_shell, pid: 407670, app_id: "xfce4-terminal")
+        #31: con "eliaswuoti@evo:~" (xdg_shell, pid: 407670, app_id: "xfce4-terminal")
+      #22: con "[unsaved project] - REAPER v7.22 (xdg_shell, pid: 767280, app_id: "reaper")
+      #29: floating_con "(null)" (xwayland, pid: 767280, X11 window: 0x800001)
+      #28: floating_con "FX: Track 1" (xdg_shell, pid: 767280, app_id: "reaper")
+```
+In the output you can see that both the main window and REAPER are running as a Wayland windows, while the BwArp window runs as an XWayland window.
+
+### Linking X and Wayland windows
+
+This is pretty much the biggest issue within this whole blog post.
+Since the X window and Wayland window are managed completely independently, the user experience borders on unusable.
+Reaper's effects window is useless now that the plugin is not embedded inside it.
+
+With this in mind the previous issues with popup windows and mouse coordinates aren't so bad anymore.
+
+## Conclusions
+
+Here's a combined list of all the issues to be resolved. Some of them are major architectural actions, some of them are related to the environment REAPER is executed in, and some of them are just plain bugs:
+
+- 3rd party plugins (VST) can't be bridged when they run
+    * Unless REAPER would run its own X server and handle bridging
+- Popup windows and dialogs are opened outside of the main window
+- GDK and REAPER's own scaling overlap
+    * Awful performance when running with both enabled
+- Mouse events coordinates are not always sent correctly
+    * Depends on the scaling used
+- Screen updates need additional workarounds on Wayland
+    * These in turn cause problems with existing rendering of dialogs
+
+All in all, I'm not sure how ready Reaper (or any other DAW) on Linux is to run on Wayland. The biggest issue is that bridging X windows inside a Wayland window would require implementing a tool similar to XWayland but inside the DAW. Otherwise the DAW would have to rely on using X functions and very hacky overlaying of X and Wayland windows.
+
+Lastly, my fork of WDL/SWELL is available [here](https://github.com/wwuoti/WDL/).
