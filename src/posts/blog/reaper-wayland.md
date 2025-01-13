@@ -1,7 +1,7 @@
 ---
 title: "Reaper on Wayland"
 category: "Linux"
-date: "2025-01-10"
+date: "2025-01-13"
 desc: "Digging into WDL and GDK"
 thumbnail: "./images/reaper_wayland/reaper_broken_screen_updates1.png"
 alt: "markdown logo"
