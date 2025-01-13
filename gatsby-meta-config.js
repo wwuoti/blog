@@ -24,7 +24,8 @@ const metaConfig = {
   lang: "en",
   utterances: "wwuoti/wwuoti.github.io",
   links: {
-    github: "https://github.com/wwuoti/wwuoti.github.io",
+    github: "https://github.com/wwuoti/",
+    gitlab: "https://gitlab.com/wwuoti/",
   },
   favicon: "src/images/logo.svg",
 }

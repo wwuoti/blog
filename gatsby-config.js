@@ -23,6 +23,10 @@ const siteMetadata = {
       link: meta.links.github,
       name: "Github",
     },
+    {
+      link: meta.links.gitlab,
+      name: "Gitlab",
+    },
   ],
 }
 
